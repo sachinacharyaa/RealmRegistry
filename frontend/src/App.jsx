@@ -41,28 +41,16 @@ const NepalFlag = () => (
   </svg>
 )
 
-/** Hexagon logo: Nepal red/blue, mountains/land, data/blockchain */
-const JaggaChainLogo = ({ className = 'h-10 w-auto' }) => (
-  <svg viewBox="0 0 48 48" className={className} fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-    <defs>
-      <linearGradient id="logo-blue" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#1E3A8A" />
-        <stop offset="100%" stopColor="#0f1e52" />
-      </linearGradient>
-    </defs>
-    {/* Hexagon – double border */}
-    <path d="M24 2 L44 14 L44 34 L24 46 L4 34 L4 14 Z" stroke="url(#logo-blue)" strokeWidth="2.5" fill="none" />
-    <path d="M24 5 L40 15 L40 33 L24 42 L8 33 L8 15 Z" stroke="#1E3A8A" strokeWidth="1.2" fill="none" opacity="0.7" />
-    {/* Base – darker blue */}
-    <path d="M14 32 L34 32 L32 38 L16 38 Z" fill="#0f1e52" />
-    {/* Central red – mountains/roofline */}
-    <path d="M16 38 L24 22 L32 38 Z" fill="#DC2626" />
-    {/* Line graph – red curve with nodes */}
-    <path d="M12 14 Q24 8 36 14" stroke="#DC2626" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-    <circle cx="14" cy="15" r="2.5" fill="#DC2626" />
-    <circle cx="24" cy="11" r="2.5" fill="#DC2626" />
-    <circle cx="34" cy="15" r="2.5" fill="#DC2626" />
-  </svg>
+/** Official Emblem of Nepal – used as app logo */
+const EMBLEM_LOGO_URL = 'https://giwmscdntwo.gov.np/static/assets/image/Emblem_of_Nepal.png'
+const JaggaChainLogo = ({ className = 'h-12 w-12' }) => (
+  <img
+    src={EMBLEM_LOGO_URL}
+    alt="Emblem of Nepal"
+    className={className}
+    width={48}
+    height={48}
+  />
 )
 
 function App() {
@@ -467,7 +455,7 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <button onClick={() => setActiveTab('landing')} className="flex items-center gap-3 hover:opacity-80 transition">
-              <JaggaChainLogo className="h-10 w-10 shrink-0" />
+              <JaggaChainLogo className="h-12 w-12 shrink-0" />
               <span className="text-xl font-bold tracking-tight text-[var(--text-primary)] font-display">JaggaChain</span>
             </button>
             <nav className="hidden md:flex items-center gap-8">
@@ -514,33 +502,11 @@ function App() {
               </div>
             </div>
             <div className="hidden lg:flex justify-center items-center animate-fadeInUp animate-delay-200">
-              <svg viewBox="0 0 320 280" className="w-full max-w-md h-auto" aria-hidden>
-                <defs>
-                  <linearGradient id="nepal-mountain" x1="0%" y1="100%" x2="0%" y2="0%">
-                    <stop offset="0%" stopColor="#1E3A8A" stopOpacity="0.95" />
-                    <stop offset="100%" stopColor="#2563EB" stopOpacity="0.7" />
-                  </linearGradient>
-                  <linearGradient id="nepal-land" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#DC2626" stopOpacity="0.2" />
-                    <stop offset="100%" stopColor="#1E3A8A" stopOpacity="0.15" />
-                  </linearGradient>
-                </defs>
-                {/* Himalayan silhouette – Nepal */}
-                <path fill="url(#nepal-mountain)" d="M0 200 L40 120 L80 160 L120 80 L160 140 L200 60 L240 100 L280 40 L320 80 L320 280 L0 280 Z" opacity="0.9" />
-                {/* Land parcels / registry – divided land */}
-                <path fill="url(#nepal-land)" d="M0 220 L320 220 L320 280 L0 280 Z" />
-                <line x1="80" y1="220" x2="80" y2="280" stroke="#1E3A8A" strokeWidth="1.5" opacity="0.4" />
-                <line x1="160" y1="220" x2="160" y2="280" stroke="#1E3A8A" strokeWidth="1.5" opacity="0.4" />
-                <line x1="240" y1="220" x2="240" y2="280" stroke="#1E3A8A" strokeWidth="1.5" opacity="0.4" />
-                {/* Chain nodes – blockchain / Solana */}
-                <g fill="#1E3A8A" opacity="0.85">
-                  <circle cx="60" cy="250" r="6" />
-                  <circle cx="140" cy="250" r="6" />
-                  <circle cx="220" cy="250" r="6" />
-                  <circle cx="300" cy="250" r="6" />
-                </g>
-                <path d="M54 250 H126 M134 250 H206 M214 250 H294" stroke="#1E3A8A" strokeWidth="2" fill="none" opacity="0.5" strokeLinecap="round" />
-              </svg>
+              <img
+                src="/nepal-map.png"
+                alt="Nepal – national map with flag colours and symbols"
+                className="w-full max-w-md h-auto object-contain drop-shadow-lg"
+              />
             </div>
           </div>
         </div>
@@ -628,7 +594,7 @@ function App() {
       <footer className="border-t border-slate-200 bg-white py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <JaggaChainLogo className="h-9 w-9" />
+            <JaggaChainLogo className="h-11 w-11" />
             <span className="font-semibold text-[var(--text-primary)] font-display">JaggaChain</span>
           </div>
           <p className="text-sm text-[var(--text-muted)]">Digital Land Registry · Government of Nepal · Powered by Solana</p>
@@ -680,7 +646,7 @@ function App() {
                   onClick={() => setActiveTab('landing')}
                   className="flex items-center gap-3 hover:opacity-80 transition"
                 >
-                  <JaggaChainLogo className="h-10 w-10 shrink-0" />
+                  <JaggaChainLogo className="h-12 w-12 shrink-0" />
                   <span className="text-xl font-bold tracking-tight text-[var(--text-primary)] font-display">JaggaChain</span>
                 </button>
                 <div className="flex items-center gap-3">
