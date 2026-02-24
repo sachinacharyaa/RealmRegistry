@@ -41,11 +41,11 @@ const NepalFlag = () => (
   </svg>
 )
 
-const JaggaChainLogo = ({ className = 'h-20 w-auto' }) => (
+const JaggaChainLogo = ({ className = 'h-32 w-auto' }) => (
   <img
     src="/logo.png"
     alt="JaggaChain Logo"
-    className={`${className} object-contain transition-transform duration-300`}
+    className={`${className} object-contain transition-transform duration-300 bg-transparent`}
   />
 )
 
