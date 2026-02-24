@@ -102,7 +102,10 @@ body {
 
 /* Nepal-themed backgrounds – no grid, warm and clear */
 .bg-hero-nepal {
-  background: linear-gradient(135deg, #f8d7da 0%, #f3d0d7 15%, #e8d5e8 30%, #d8dff0 55%, #cdd8ee 70%, #c8d5ec 85%, #dde4f0 100%);
+  background:
+    radial-gradient(900px 420px at 8% 2%, rgba(59, 130, 246, 0.18), transparent 58%),
+    radial-gradient(780px 360px at 92% 8%, rgba(37, 99, 235, 0.14), transparent 56%),
+    linear-gradient(135deg, #f3f8ff 0%, #e9f2ff 38%, #dbe9ff 68%, #edf4ff 100%);
 }
 .bg-page-nepal {
   background:
@@ -232,8 +235,8 @@ body {
 .landing-problem-chip {
   position: relative;
   overflow: hidden;
-  border-color: #c6d8f0 !important;
-  box-shadow: 0 14px 28px -24px rgba(0, 57, 148, 0.5), 0 2px 8px rgba(15, 23, 42, 0.04);
+  border-color: #f2c9d0 !important;
+  box-shadow: 0 14px 28px -24px rgba(185, 28, 28, 0.38), 0 2px 8px rgba(15, 23, 42, 0.04);
 }
 
 .landing-problem-chip::after {
@@ -243,19 +246,19 @@ body {
   top: 0;
   width: 100%;
   height: 3px;
-  background: linear-gradient(90deg, rgba(0, 57, 148, 0.5), rgba(29, 91, 182, 0.2));
+  background: linear-gradient(90deg, rgba(185, 28, 28, 0.65), rgba(220, 38, 38, 0.3));
 }
 
 .landing-chip-1 {
-  background: linear-gradient(140deg, #edf5ff 0%, #e2edff 100%);
+  background: linear-gradient(140deg, #fff1f2 0%, #ffe4e6 100%);
 }
 
 .landing-chip-2 {
-  background: linear-gradient(140deg, #ebf6ff 0%, #e1efff 100%);
+  background: linear-gradient(140deg, #fff5f5 0%, #fee2e2 100%);
 }
 
 .landing-chip-3 {
-  background: linear-gradient(140deg, #edf2ff 0%, #e4ebff 100%);
+  background: linear-gradient(140deg, #fff1f2 0%, #fecdd3 100%);
 }
 
 .landing-problem-visual {

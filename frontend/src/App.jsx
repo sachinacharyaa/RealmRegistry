@@ -447,7 +447,7 @@ function App() {
   const Landing = () => (
     <div className="min-h-screen">
       {/* Top Navigation */}
-      <header className="sticky top-0 z-50 w-full border-b border-primary/10 bg-white/90 backdrop-blur-md">
+      <header className="sticky top-0 z-50 w-full bg-white/90 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-20 items-center justify-between gap-8">
             <button onClick={() => setActiveTab('landing')} className="flex items-center group cursor-pointer">
@@ -465,9 +465,9 @@ function App() {
         </div>
       </header>
 
-      <main>
+      <main className="bg-hero-nepal">
         {/* Hero Section */}
-        <section className="relative min-h-[85vh] flex items-center overflow-hidden bg-hero-nepal">
+        <section className="relative min-h-[85vh] flex items-center overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-16 lg:py-24">
             <div className="grid lg:grid-cols-2 gap-16 items-center">
               <div className="space-y-8 animate-fadeInUp max-w-[560px]">
@@ -496,8 +496,8 @@ function App() {
                       if (el) el.click();
                     }}
                     type="button"
-                    className="btn-secondary rounded-lg border text-[15px] font-medium px-6 py-3.5 bg-white"
-                    style={{ borderColor: '#cccccc', color: '#1a1a2e' }}
+                    className="btn-secondary rounded-lg border text-[15px] font-medium px-6 py-3.5 bg-white text-[#1a1a2e] hover:bg-[#001f5c] hover:text-white transition-colors duration-200"
+                    style={{ borderColor: '#cccccc' }}
                   >
                     Connect Wallet
                   </button>
@@ -526,7 +526,7 @@ function App() {
         </section>
 
         {/* Problem Section (Second Full Page) */}
-        <section id="problem" className="min-h-screen flex items-center bg-gradient-to-b from-white to-slate-50">
+        <section id="problem" className="min-h-screen flex items-center">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-16 lg:py-24">
             <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
               <div className="animate-fadeInUp">
@@ -566,7 +566,7 @@ function App() {
         </section>
 
         {/* Pillars Section */}
-        <section id="pillars" className="py-20 bg-gradient-to-b from-slate-50 to-white">
+        <section id="pillars" className="min-h-screen flex items-center">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="mb-16">
               <h2 className="text-primary font-bold text-sm uppercase tracking-widest mb-2">The Web3 Advantage</h2>
@@ -592,14 +592,13 @@ function App() {
         </section>
 
         {/* How It Works Diagram */}
-        <section id="how-it-works" className="py-20">
+        <section id="how-it-works" className="min-h-screen flex items-center">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-20">
               <h2 className="text-3xl lg:text-4xl font-black mb-4">From Physical Asset to Digital Title</h2>
               <p className="text-slate-500 max-w-2xl mx-auto">Our streamlined process ensures every property is legally validated and cryptographically secured in four simple steps.</p>
             </div>
             <div className="relative">
-              <div className="hidden lg:block absolute top-1/2 left-0 w-full h-0.5 bg-gradient-to-r from-primary/5 via-primary/40 to-primary/5 -translate-y-1/2 z-0"></div>
               <div className="grid lg:grid-cols-4 gap-8 relative z-10">
                 {[
                   { icon: Globe, title: 'Upload Docs', desc: 'Deeds, surveys, and identity verification uploaded to our secure portal.', step: 1 },
@@ -629,7 +628,7 @@ function App() {
         </section>
 
         {/* Live Audit Log Preview */}
-        <section className="py-20 bg-slate-900 text-white overflow-hidden">
+        <section className="min-h-screen flex items-center bg-slate-900 text-white overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-16 items-center">
               <div>
@@ -674,7 +673,7 @@ function App() {
         </section>
 
         {/* CTA Section */}
-        <section className="py-20 relative overflow-hidden">
+        <section className="min-h-screen flex items-center relative overflow-hidden">
           <div className="absolute inset-0 bg-primary transform -skew-y-3 origin-bottom-right"></div>
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center text-white py-12">
             <h2 className="text-4xl font-black mb-6">Ready to Secure Your Future?</h2>
@@ -694,7 +693,7 @@ function App() {
         </section>
       </main>
 
-      <footer className="bg-slate-50 border-t border-slate-200 py-12">
+      <footer className="bg-hero-nepal py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-8">
             <button onClick={() => setActiveTab('landing')} className="flex items-center group cursor-pointer">
