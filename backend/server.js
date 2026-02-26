@@ -27,6 +27,7 @@ const COUNCIL_MEMBER_WALLETS = (process.env.REALMS_COUNCIL_WALLETS || `${ASSIGNE
   .split(',')
   .map((w) => w.trim())
   .filter(Boolean);
+const REQUIRED_COUNCIL_APPROVALS = COUNCIL_MEMBER_WALLETS.length || 2;
 const ASSIGNED_WALLETS = [
   {
     key: 'A',
@@ -124,6 +125,22 @@ const whitelistSchema = new mongoose.Schema({
   governanceParcelMintAddress: String, // required for approved registration
   governanceVerifiedSlot: Number,
   governanceVerifiedAt: Date,
+  councilWorkflow: {
+    proposalCreated: { type: Boolean, default: false },
+    proposalCreatedBy: String,
+    proposalCreatedAt: Date,
+    proposalAddress: String,
+    requiredApprovals: { type: Number, default: REQUIRED_COUNCIL_APPROVALS },
+    votes: [
+      {
+        walletAddress: String,
+        vote: String,
+        votedAt: Date
+      }
+    ],
+    approvalCount: { type: Number, default: 0 },
+    readyForDaoAuthority: { type: Boolean, default: false }
+  },
   adminPaymentTxSignature: String, // legacy field kept for backward compatibility
   nftTransferSignature: String,    // legacy field kept for backward compatibility
   createdAt: { type: Date, default: Date.now }
@@ -167,6 +184,58 @@ const requireGovernanceConfig = (res) => {
     return false;
   }
   return true;
+};
+
+const createInitialCouncilWorkflow = () => ({
+  proposalCreated: false,
+  proposalCreatedBy: '',
+  proposalCreatedAt: null,
+  proposalAddress: '',
+  requiredApprovals: REQUIRED_COUNCIL_APPROVALS,
+  votes: [],
+  approvalCount: 0,
+  readyForDaoAuthority: false
+});
+
+const normalizeCouncilWorkflow = (request) => {
+  const current = request.councilWorkflow || {};
+  const votes = Array.isArray(current.votes)
+    ? current.votes
+      .filter((v) => v && typeof v.walletAddress === 'string')
+      .map((v) => ({
+        walletAddress: v.walletAddress,
+        vote: v.vote === 'approved' ? 'approved' : 'rejected',
+        votedAt: v.votedAt ? new Date(v.votedAt) : new Date()
+      }))
+    : [];
+
+  const uniqueVotes = [];
+  const seen = new Set();
+  for (const vote of votes) {
+    if (!seen.has(vote.walletAddress)) {
+      seen.add(vote.walletAddress);
+      uniqueVotes.push(vote);
+    }
+  }
+
+  const approvalCount = uniqueVotes.filter((v) => v.vote === 'approved').length;
+  const requiredApprovals = Number(current.requiredApprovals) > 0
+    ? Number(current.requiredApprovals)
+    : REQUIRED_COUNCIL_APPROVALS;
+  const readyForDaoAuthority = Boolean(current.proposalCreated) && approvalCount >= requiredApprovals;
+
+  request.councilWorkflow = {
+    proposalCreated: Boolean(current.proposalCreated),
+    proposalCreatedBy: current.proposalCreatedBy || '',
+    proposalCreatedAt: current.proposalCreatedAt || null,
+    proposalAddress: current.proposalAddress || '',
+    requiredApprovals,
+    votes: uniqueVotes,
+    approvalCount,
+    readyForDaoAuthority
+  };
+
+  return request.councilWorkflow;
 };
 
 app.get('/api/parcels', async (req, res) => {
@@ -365,6 +434,7 @@ app.post('/api/whitelist', async (req, res) => {
         : parcelId,
       freezeReason,
       paymentTxSignature,
+      councilWorkflow: createInitialCouncilWorkflow(),
       nftTransferSignature // Real NFT transfer to escrow (optional if dev-mode)
     });
     await request.save();
@@ -390,8 +460,96 @@ app.post('/api/freeze-requests', async (req, res) => {
       location: parcel.location,
       size: parcel.size,
       parcelId: parcel._id.toString(),
-      freezeReason: freezeReason || 'Freeze requested by council for review.'
+      freezeReason: freezeReason || 'Freeze requested by council for review.',
+      councilWorkflow: createInitialCouncilWorkflow()
     });
+
+    await request.save();
+    res.json(request);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/council/proposals/:id/create', async (req, res) => {
+  try {
+    const { walletAddress, proposalAddress } = req.body;
+    if (!walletAddress) {
+      return res.status(400).json({ error: 'walletAddress is required' });
+    }
+    if (!COUNCIL_MEMBER_WALLETS.includes(walletAddress)) {
+      return res.status(403).json({ error: 'Only assigned council member wallets can create proposals.' });
+    }
+
+    const request = await Whitelist.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: 'Request not found' });
+    if (request.status !== 'pending') {
+      return res.status(400).json({ error: `Request already ${request.status}` });
+    }
+
+    const workflow = normalizeCouncilWorkflow(request);
+    if (workflow.proposalCreated) {
+      return res.status(400).json({ error: 'Proposal already created for this request.' });
+    }
+
+    request.councilWorkflow = {
+      ...workflow,
+      proposalCreated: true,
+      proposalCreatedBy: walletAddress,
+      proposalCreatedAt: new Date(),
+      proposalAddress: proposalAddress ? String(proposalAddress).trim() : workflow.proposalAddress || '',
+      approvalCount: 0,
+      votes: [],
+      readyForDaoAuthority: false
+    };
+
+    await request.save();
+    res.json(request);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/council/votes/:id', async (req, res) => {
+  try {
+    const { walletAddress, vote } = req.body;
+    if (!walletAddress || !vote) {
+      return res.status(400).json({ error: 'walletAddress and vote are required' });
+    }
+    if (!COUNCIL_MEMBER_WALLETS.includes(walletAddress)) {
+      return res.status(403).json({ error: 'Only assigned council member wallets can vote.' });
+    }
+    if (!['approved', 'rejected'].includes(vote)) {
+      return res.status(400).json({ error: 'vote must be approved or rejected' });
+    }
+
+    const request = await Whitelist.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: 'Request not found' });
+    if (request.status !== 'pending') {
+      return res.status(400).json({ error: `Request already ${request.status}` });
+    }
+
+    const workflow = normalizeCouncilWorkflow(request);
+    if (!workflow.proposalCreated) {
+      return res.status(400).json({ error: 'Create proposal first.' });
+    }
+    if (workflow.votes.some((v) => v.walletAddress === walletAddress)) {
+      return res.status(400).json({ error: 'This council member has already voted.' });
+    }
+
+    const nextVotes = [
+      ...workflow.votes,
+      { walletAddress, vote, votedAt: new Date() }
+    ];
+    const approvalCount = nextVotes.filter((v) => v.vote === 'approved').length;
+    const readyForDaoAuthority = approvalCount >= workflow.requiredApprovals;
+
+    request.councilWorkflow = {
+      ...workflow,
+      votes: nextVotes,
+      approvalCount,
+      readyForDaoAuthority
+    };
 
     await request.save();
     res.json(request);
@@ -517,7 +675,8 @@ app.post('/api/governance/execute/:id', async (req, res) => {
       executionTxSignature,
       governanceActionTxSignature,
       parcelMintAddress,
-      paymentTxSignature
+      paymentTxSignature,
+      executorWalletAddress
     } = req.body;
 
     if (!['approved', 'rejected'].includes(status)) {
@@ -525,6 +684,12 @@ app.post('/api/governance/execute/:id', async (req, res) => {
     }
     if (!proposalAddress || !executionTxSignature) {
       return res.status(400).json({ error: 'proposalAddress and executionTxSignature are required' });
+    }
+    if (!executorWalletAddress) {
+      return res.status(400).json({ error: 'executorWalletAddress is required' });
+    }
+    if (executorWalletAddress !== DAO_AUTHORITY_WALLET) {
+      return res.status(403).json({ error: 'Only DAO authority wallet can execute governance approvals.' });
     }
     if (FEE_GOVERNANCE_EXECUTION_SOL > 0 && !paymentTxSignature) {
       return res.status(400).json({ error: 'Governance execution fee required. Include paymentTxSignature.' });
@@ -534,6 +699,10 @@ app.post('/api/governance/execute/:id', async (req, res) => {
     if (!request) return res.status(404).json({ error: 'Request not found' });
     if (request.status !== 'pending') {
       return res.status(400).json({ error: `Request already ${request.status}` });
+    }
+    const workflow = normalizeCouncilWorkflow(request);
+    if (!workflow.readyForDaoAuthority) {
+      return res.status(400).json({ error: `Council approvals incomplete (${workflow.approvalCount}/${workflow.requiredApprovals}).` });
     }
 
     const governanceCheck = await solana.verifyGovernanceExecution({

@@ -354,7 +354,8 @@ function App() {
           executionTxSignature,
           governanceActionTxSignature,
           parcelMintAddress,
-          paymentTxSignature
+          paymentTxSignature,
+          executorWalletAddress: walletAddress
         }),
       })
       if (res.ok) {
@@ -375,6 +376,87 @@ function App() {
 
   const openRealmsCouncil = () => {
     window.open(REALMS_APP_URL, '_blank', 'noopener,noreferrer')
+  }
+
+  const getCouncilWorkflowMeta = (item) => {
+    const workflow = item?.councilWorkflow || {}
+    const votes = Array.isArray(workflow.votes) ? workflow.votes : []
+    const requiredApprovals = Number(workflow.requiredApprovals) > 0 ? Number(workflow.requiredApprovals) : COUNCIL_WALLETS.length
+    const approvalCount = Number(workflow.approvalCount) > 0
+      ? Number(workflow.approvalCount)
+      : votes.filter((v) => v?.vote === 'approved').length
+    const proposalCreated = Boolean(workflow.proposalCreated)
+    const readyForDaoAuthority = Boolean(workflow.readyForDaoAuthority) || (proposalCreated && approvalCount >= requiredApprovals)
+    const hasCurrentWalletApproved = Boolean(walletAddress && votes.some((v) => v?.walletAddress === walletAddress && v?.vote === 'approved'))
+    return {
+      proposalCreated,
+      requiredApprovals,
+      approvalCount,
+      readyForDaoAuthority,
+      hasCurrentWalletApproved
+    }
+  }
+
+  const handleCreateProposal = async (id) => {
+    try {
+      if (!walletAddress) throw new Error('Connect a council wallet first.')
+      if (!isOfficerWallet) throw new Error('Only council member wallets (B/C) can create proposals.')
+      setTxLoading(id)
+      const proposalAddress = window.prompt('Realms proposal address (optional at creation time):') || ''
+      const res = await fetch(`${API_BASE}/api/council/proposals/${id}/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          walletAddress,
+          proposalAddress: proposalAddress.trim()
+        })
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Failed to create proposal')
+      }
+      await res.json().catch(() => ({}))
+      await fetchWhitelist()
+      showNotification('Proposal created. Council members can now vote.', 'success')
+      openRealmsCouncil()
+    } catch (err) {
+      showNotification(paymentErrorMessage(err), 'error')
+    } finally {
+      setTxLoading(null)
+    }
+  }
+
+  const handleVoteApprove = async (id) => {
+    try {
+      if (!walletAddress) throw new Error('Connect a council wallet first.')
+      if (!isOfficerWallet) throw new Error('Only council member wallets (B/C) can vote.')
+      setTxLoading(id)
+      const res = await fetch(`${API_BASE}/api/council/votes/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          walletAddress,
+          vote: 'approved'
+        })
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Failed to cast vote')
+      }
+      const updated = await res.json()
+      await fetchWhitelist()
+      const updatedMeta = getCouncilWorkflowMeta(updated)
+      if (updatedMeta.readyForDaoAuthority) {
+        showNotification('2/2 council approvals complete. Request is now ready for DAO Authority execution.', 'success')
+      } else {
+        showNotification('Council approval vote recorded.', 'success')
+      }
+      openRealmsCouncil()
+    } catch (err) {
+      showNotification(paymentErrorMessage(err), 'error')
+    } finally {
+      setTxLoading(null)
+    }
   }
 
   const handleCreateFreezeRequest = async () => {
