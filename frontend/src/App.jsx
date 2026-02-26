@@ -204,7 +204,7 @@ function App() {
     return await signAndSubmitTxBase64(txBase64)
   }
 
-  /** Pay registration fee and record details in one tx. Wallet will open to confirm Ã¢â‚¬â€ that's your Solana proof. */
+  /** Pay registration fee and record details in one tx. Wallet will open to confirm — that's your Solana proof. */
   const payRegistrationTx = async (lamports, payload) => {
     if (!connected || !publicKey) throw new Error('Connect your wallet first.')
     const toPubkey = feeConfig.treasuryWallet || publicKey.toBase58()
@@ -621,7 +621,7 @@ function App() {
   const truncateHash = (hash) => (hash ? hash.slice(0, 8) + '...' + hash.slice(-8) : '-')
 
   const formatSize = (size) => {
-    if (!size) return 'Ã¢â‚¬â€'
+    if (!size) return '—'
     const parts = []
     if (size.bigha) parts.push(`${size.bigha} Bigha`)
     if (size.kattha) parts.push(`${size.kattha} Kattha`)
@@ -770,7 +770,7 @@ function App() {
                 { icon: Shield, title: 'Immutable NFT Titles', desc: 'Your land, your token. Every property is minted as a unique NFT, ensuring non-fungible security on the global ledger.' },
                 { icon: CheckCircle2, title: 'Instant Verification', desc: 'Zero-knowledge proofs allow for immediate ownership validation without exposing sensitive personal data.' },
                 { icon: Landmark, title: 'Transparent Audit Logs', desc: 'Every change, transfer, and lien is recorded forever on the blockchain, creating an unalterable history.' },
-                { icon: Zap, title: 'High-Speed Processing', desc: 'Leveraging SolanaÃ¢â‚¬â„¢s 65k+ TPS architecture for near-instant settlement and minimal transaction fees.' },
+                { icon: Zap, title: 'High-Speed Processing', desc: 'Leveraging Solana’s 65k+ TPS architecture for near-instant settlement and minimal transaction fees.' },
               ].map((item, i) => (
                 <div key={i} className={`landing-pillar-card landing-pillar-tone-${i + 1} p-8 rounded-2xl border transition-all group shadow-sm border-slate-200/60 hover:shadow-xl hover:shadow-primary/10`}>
                   <div className="landing-pillar-icon w-12 h-12 rounded-xl bg-white/70 ring-1 ring-white/80 backdrop-blur-sm flex items-center justify-center mb-6 transition-all text-primary">
@@ -996,21 +996,21 @@ function App() {
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-500">District</span>
+                  <span className="text-slate-500">Country</span>
                   <br />
                   <span className="text-slate-800">
                     {selectedPublicParcel.location?.district || '—'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-500">Municipality</span>
+                  <span className="text-slate-500">City</span>
                   <br />
                   <span className="text-slate-800">
                     {selectedPublicParcel.location?.municipality || '—'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-500">Ward / Tole</span>
+                  <span className="text-slate-500">Ward / Locality</span>
                   <br />
                   <span className="text-slate-800">
                     Ward {selectedPublicParcel.location?.ward ?? '—'},{' '}
@@ -1144,12 +1144,12 @@ function App() {
                     <Search className="w-5 h-5 text-primary" />
                     Search public land records
                   </h2>
-                  <p className="text-slate-500 mb-4 font-medium">No wallet required. Search by owner name, district, municipality, or tole.</p>
+                  <p className="text-slate-500 mb-4 font-medium">No wallet required. Search by owner name, country, city, or locality.</p>
                   <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       type="text"
-                      placeholder="Search by owner, district, municipality, or tole..."
+                      placeholder="Search by owner, country, city, or locality..."
                       value={searchQuery}
                       onChange={(e) => searchParcels(e.target.value)}
                       className="w-full pl-12 pr-4 py-4 border border-slate-200 bg-slate-50 rounded-xl focus:ring-2 focus:ring-primary focus:bg-white focus:border-primary outline-none transition-all font-medium"
@@ -1299,11 +1299,11 @@ function App() {
                                         <div className="grid grid-cols-2 gap-x-6 gap-y-2">
                                           <div><span className="text-slate-500">Owner name</span><br /><span className="font-medium text-slate-800">{r.ownerName}</span></div>
                                           <div><span className="text-slate-500">Wallet</span><br /><span className="font-mono text-slate-800 break-all">{r.walletAddress}</span></div>
-                                          <div><span className="text-slate-500">District</span><br /><span className="text-slate-800">{r.location?.district || 'Ã¢â‚¬â€'}</span></div>
-                                          <div><span className="text-slate-500">Municipality</span><br /><span className="text-slate-800">{r.location?.municipality || 'Ã¢â‚¬â€'}</span></div>
-                                          <div><span className="text-slate-500">Ward</span><br /><span className="text-slate-800">{r.location?.ward ?? 'Ã¢â‚¬â€'}</span></div>
-                                          <div><span className="text-slate-500">Tole</span><br /><span className="text-slate-800">{r.location?.tole || 'Ã¢â‚¬â€'}</span></div>
-                                          <div><span className="text-slate-500">Size</span><br /><span className="text-slate-800">{formatSize(r.size)}</span></div>
+                                          <div><span className="text-slate-500">Country</span><br /><span className="text-slate-800">{r.location?.district || '—'}</span></div>
+                                          <div><span className="text-slate-500">City</span><br /><span className="text-slate-800">{r.location?.municipality || '—'}</span></div>
+                                          <div><span className="text-slate-500">Ward</span><br /><span className="text-slate-800">{r.location?.ward ?? '—'}</span></div>
+                                          <div><span className="text-slate-500">Locality</span><br /><span className="text-slate-800">{r.location?.tole || '—'}</span></div>
+                                          <div><span className="text-slate-500">Land area</span><br /><span className="text-slate-800">{formatSize(r.size)}</span></div>
                                           <div><span className="text-slate-500">Submitted</span><br /><span className="text-slate-800">{new Date(r.createdAt).toLocaleString()}</span></div>
                                         </div>
                                         {r.paymentTxSignature && !r.paymentTxSignature.startsWith('dev-') && (
@@ -1319,7 +1319,7 @@ function App() {
                                       <>
                                         <div className="grid grid-cols-2 gap-x-6 gap-y-2">
                                           <div><span className="text-slate-500">Requested by</span><br /><span className="font-medium text-slate-800">{r.walletAddress}</span></div>
-                                          <div><span className="text-slate-500">Parcel ID</span><br /><span className="font-mono text-slate-800">{r.parcelId || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</span></div>
+                                          <div><span className="text-slate-500">Parcel ID</span><br /><span className="font-mono text-slate-800">{r.parcelId || '—'}</span></div>
                                           <div className="col-span-2"><span className="text-slate-500">Reason</span><br /><span className="text-slate-800">{r.freezeReason || 'Governance review requested'}</span></div>
                                           <div><span className="text-slate-500">Submitted</span><br /><span className="text-slate-800">{new Date(r.createdAt).toLocaleString()}</span></div>
                                         </div>
@@ -1331,7 +1331,7 @@ function App() {
                                           <div><span className="text-slate-500">Your wallet</span><br /><span className="font-mono text-slate-800 break-all">{r.walletAddress}</span></div>
                                           <div><span className="text-slate-500">To (recipient)</span><br /><span className="text-slate-800">{r.toName}</span></div>
                                           <div><span className="text-slate-500">Recipient wallet</span><br /><span className="font-mono text-slate-800 break-all">{r.toWallet}</span></div>
-                                          <div><span className="text-slate-500">Parcel ID</span><br /><span className="font-mono text-slate-800">{r.parcelId || 'Ã¢â‚¬â€'}</span></div>
+                                          <div><span className="text-slate-500">Parcel ID</span><br /><span className="font-mono text-slate-800">{r.parcelId || '—'}</span></div>
                                           <div><span className="text-slate-500">Submitted</span><br /><span className="text-slate-800">{new Date(r.createdAt).toLocaleString()}</span></div>
                                         </div>
                                         {r.paymentTxSignature && !r.paymentTxSignature.startsWith('dev-') && (
@@ -1357,7 +1357,7 @@ function App() {
                       <div className="premium-card rounded-2xl shadow-sm border border-slate-200 p-16 text-center">
                         <MapPin className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                         <h2 className="text-xl font-semibold text-slate-800 mb-2">No parcels yet</h2>
-                        <p className="text-slate-500 mb-6">You donÃ¢â‚¬â„¢t have any registered parcels. Register your first land to mint an NFT on Solana.</p>
+                        <p className="text-slate-500 mb-6">You don’t have any registered parcels. Register your first land to mint an NFT on Solana.</p>
                         <button
                           onClick={() => setShowRegisterModal(true)}
                           className="inline-flex items-center gap-2 px-8 py-3 bg-primary text-white rounded-xl font-bold hover:translate-y-[-1px] transition-all shadow-lg shadow-primary/20"
@@ -1646,11 +1646,11 @@ function App() {
                                 <div className="grid grid-cols-2 gap-x-8 gap-y-2">
                                   <div><span className="text-slate-500">Owner name</span><br /><span className="font-medium text-slate-800">{item.ownerName}</span></div>
                                   <div><span className="text-slate-500">Wallet</span><br /><span className="font-mono text-slate-800 break-all">{item.walletAddress}</span></div>
-                                  <div><span className="text-slate-500">District</span><br /><span className="text-slate-800">{item.location?.district}</span></div>
-                                  <div><span className="text-slate-500">Municipality</span><br /><span className="text-slate-800">{item.location?.municipality}</span></div>
+                                  <div><span className="text-slate-500">Country</span><br /><span className="text-slate-800">{item.location?.district}</span></div>
+                                  <div><span className="text-slate-500">City</span><br /><span className="text-slate-800">{item.location?.municipality}</span></div>
                                   <div><span className="text-slate-500">Ward</span><br /><span className="text-slate-800">{item.location?.ward}</span></div>
-                                  <div><span className="text-slate-500">Tole</span><br /><span className="text-slate-800">{item.location?.tole}</span></div>
-                                  <div><span className="text-slate-500">Size</span><br /><span className="text-slate-800">{formatSize(item.size)}</span></div>
+                                  <div><span className="text-slate-500">Locality</span><br /><span className="text-slate-800">{item.location?.tole}</span></div>
+                                  <div><span className="text-slate-500">Land area</span><br /><span className="text-slate-800">{formatSize(item.size)}</span></div>
                                   <div><span className="text-slate-500">Submitted</span><br /><span className="text-slate-800">{new Date(item.createdAt).toLocaleString()}</span></div>
                                 </div>
                               </div>
@@ -1944,7 +1944,7 @@ function App() {
               <FileCheck className="w-5 h-5 text-accent-crimson" /> Register new land
             </h2>
             <p className="text-sm text-slate-500 mb-4">
-              {feeConfig.citizenFeeSol > 0 ? `${feeConfig.citizenFeeSol} SOL (proof)` : 'Network fee only (no protocol fee)'}{!feeConfig.treasuryWallet && feeConfig.citizenFeeSol > 0 && ' Ã¢â‚¬â€ dev: paying to your wallet'}
+              {feeConfig.citizenFeeSol > 0 ? `${feeConfig.citizenFeeSol} SOL (proof)` : 'Network fee only (no protocol fee)'}{!feeConfig.treasuryWallet && feeConfig.citizenFeeSol > 0 && ' — dev: paying to your wallet'}
             </p>
             {!feeConfig.solanaConfigured && (
               <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
@@ -1953,7 +1953,7 @@ function App() {
             )}
             {feeConfig.solanaConfigured && (
               <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm">
-                When you submit, <strong>your wallet (e.g. Phantom) will open</strong>. Confirm the transaction there Ã¢â‚¬â€ that is your Solana proof. Minting happens only after a passed Realms DAO proposal is executed.
+                When you submit, <strong>your wallet (e.g. Phantom) will open</strong>. Confirm the transaction there — that is your Solana proof. Minting happens only after a passed Realms DAO proposal is executed.
               </div>
             )}
             <form onSubmit={handleRegistration} className="space-y-4">
@@ -1969,7 +1969,7 @@ function App() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">District</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Country</label>
                   <input
                     required
                     type="text"
@@ -1979,7 +1979,7 @@ function App() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Municipality</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
                   <input
                     required
                     type="text"
@@ -2001,7 +2001,7 @@ function App() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Tole</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Locality</label>
                   <input
                     required
                     type="text"
@@ -2013,7 +2013,7 @@ function App() {
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Bigha</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Land area (m²)</label>
                   <input
                     type="number"
                     value={registerForm.bigha}
@@ -2022,7 +2022,7 @@ function App() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Kattha</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Land area (ha)</label>
                   <input
                     type="number"
                     value={registerForm.kattha}
@@ -2031,7 +2031,7 @@ function App() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Dhur</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Land area (ac)</label>
                   <input
                     type="number"
                     value={registerForm.dhur}
@@ -2061,7 +2061,7 @@ function App() {
                 >
                   {txLoading === 'registering' ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" /> SubmittingÃ¢â‚¬Â¦
+                      <Loader2 className="w-4 h-4 animate-spin" /> Submitting
                     </>
                   ) : (
                     'Submit for approval'
@@ -2086,7 +2086,7 @@ function App() {
               <Zap className="w-5 h-5 text-accent-crimson" /> Transfer parcel
             </h2>
             <p className="text-sm text-slate-500 mb-4">
-              {feeConfig.citizenFeeSol > 0 ? `${feeConfig.citizenFeeSol} SOL (proof)` : 'Network fee only (no protocol fee)'}{!feeConfig.treasuryWallet && feeConfig.citizenFeeSol > 0 && ' Ã¢â‚¬â€ dev: paying to your wallet'}
+              {feeConfig.citizenFeeSol > 0 ? `${feeConfig.citizenFeeSol} SOL (proof)` : 'Network fee only (no protocol fee)'}{!feeConfig.treasuryWallet && feeConfig.citizenFeeSol > 0 && ' — dev: paying to your wallet'}
             </p>
             {!feeConfig.solanaConfigured && (
               <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
@@ -2095,7 +2095,7 @@ function App() {
             )}
             {feeConfig.solanaConfigured && (
               <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm">
-                When you submit, <strong>your wallet will open</strong>. Confirm the transaction Ã¢â‚¬â€ that records your transfer request on Solana.
+                When you submit, <strong>your wallet will open</strong>. Confirm the transaction — that records your transfer request on Solana.
               </div>
             )}
             <form onSubmit={handleTransfer} className="space-y-4">
@@ -2140,7 +2140,7 @@ function App() {
                 >
                   {txLoading === 'transferring' ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" /> ProcessingÃ¢â‚¬Â¦
+                      <Loader2 className="w-4 h-4 animate-spin" /> Processing
                     </>
                   ) : (
                     'Request transfer'
