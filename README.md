@@ -23,6 +23,13 @@ Every sensitive action must follow:
 4. Governance execution transaction is submitted.
 5. Backend verifies execution proof on-chain, then updates registry state.
 
+## Assigned Wallets
+
+- Citizen (Wallet A): `G6DKYcQnySUk1ZYYuR1HMovVscWjAtyDQb6GhqrvJYnw`
+- Council Member 1: `sDHAt4Sfn556SXvKddXjCwAeKaMpLHEKKWcfG7hfmoz`
+- Council Member 2: `6jaM7rGsMgk81pogFqMAGj7K8AByW8tQTTEnmDYFQpbH`
+- DAO Authority (Wallet D): `8b29vHx8ZdAQp9vNSLSgmNxeqgPZbyqE6paPdwVvXYSB`
+
 ## What This Repo Implements
 
 - `frontend/`: React app for explorer, citizen portal, and council execution UI.
@@ -51,6 +58,7 @@ Optional:
 ## API Notes
 
 - `POST /api/whitelist`: citizen registration/transfer request submission.
+- `POST /api/freeze-requests`: create a freeze request for DAO vote/execution.
 - `POST /api/governance/execute/:id`: DAO-only execution path (requires proposal + execution proof).
 - `PUT /api/whitelist/:id`: disabled intentionally (returns 410).
 - `GET /api/governance/config`: returns DAO/governance configuration for UI.
@@ -78,4 +86,5 @@ npm run dev
 - No hardcoded admin wallet allowlist is used for approvals.
 - Direct approval endpoint is disabled.
 - Council action requires Realms execution proof.
-- Parcel mint/transfer state updates require governance-linked transaction evidence.
+- Parcel mint, transfer, and freeze state updates require governance-linked transaction evidence.
+- Program upgrade authority must be set on-chain to the Realms Governance PDA.
