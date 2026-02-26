@@ -295,24 +295,26 @@ app.post('/api/whitelist', async (req, res) => {
       return res.status(400).json({ error: 'Payment required. Send SOL fee first and include paymentTxSignature.' });
     }
 
+    let resolvedParcel = null;
+
     if (normalizedType === 'transfer') {
       if (!parcelId || !toWallet || !toName) {
         return res.status(400).json({ error: 'Transfer requests require parcelId, toWallet, and toName.' });
       }
-      const parcel = await resolveParcelByIdOrToken(parcelId);
-      if (!parcel) return res.status(404).json({ error: 'Parcel not found.' });
-      if (parcel.status === 'frozen') {
+      resolvedParcel = await resolveParcelByIdOrToken(parcelId);
+      if (!resolvedParcel) return res.status(404).json({ error: 'Parcel not found.' });
+      if (resolvedParcel.status === 'frozen') {
         return res.status(400).json({ error: 'Parcel is frozen and cannot be transferred.' });
       }
-      if (walletAddress && parcel.ownerWallet && parcel.ownerWallet !== walletAddress) {
+      if (walletAddress && resolvedParcel.ownerWallet && resolvedParcel.ownerWallet !== walletAddress) {
         return res.status(403).json({ error: 'Only the current parcel owner can submit transfer requests.' });
       }
     }
 
     if (normalizedType === 'freeze') {
       if (!parcelId) return res.status(400).json({ error: 'Freeze requests require parcelId.' });
-      const parcel = await resolveParcelByIdOrToken(parcelId);
-      if (!parcel) return res.status(404).json({ error: 'Parcel not found.' });
+      resolvedParcel = await resolveParcelByIdOrToken(parcelId);
+      if (!resolvedParcel) return res.status(404).json({ error: 'Parcel not found.' });
     }
 
     const request = new Whitelist({
@@ -324,7 +326,7 @@ app.post('/api/whitelist', async (req, res) => {
       toWallet,
       toName,
       parcelId: normalizedType === 'transfer' || normalizedType === 'freeze'
-        ? ((await resolveParcelByIdOrToken(parcelId))?._id?.toString() || parcelId)
+        ? (resolvedParcel?._id?.toString() || parcelId)
         : parcelId,
       freezeReason,
       paymentTxSignature,
