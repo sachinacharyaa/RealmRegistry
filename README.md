@@ -4,12 +4,12 @@ RealmRegistry is a municipal land registry where authority is controlled by a **
 
 ## Governance Model
 
-- Municipality DAO example: `Ward-12 Land Authority DAO`
-- Governance style: `Council`
-- Council size: `3-5 officers`
-- Vote threshold: `2/3`
+- DAO name example: `Ward-12 Land Authority DAO`
+- Governance mode: `Council`
+- Council members: `2` government officers
+- Vote threshold: `2/2`
 - Voting window: `24-48 hours`
-- Token economy: `not required` (council governance only)
+- Token economy: not required
 
 ## Core Principle
 
@@ -25,10 +25,29 @@ Every sensitive action must follow:
 
 ## Assigned Wallets
 
-- Citizen (Wallet A): `G6DKYcQnySUk1ZYYuR1HMovVscWjAtyDQb6GhqrvJYnw`
-- Council Member 1: `sDHAt4Sfn556SXvKddXjCwAeKaMpLHEKKWcfG7hfmoz`
-- Council Member 2: `6jaM7rGsMgk81pogFqMAGj7K8AByW8tQTTEnmDYFQpbH`
-- DAO Authority (Wallet D): `8b29vHx8ZdAQp9vNSLSgmNxeqgPZbyqE6paPdwVvXYSB`
+- Wallet A (user (Citizens)) Sachin Acharya: `G6DKYcQnySUk1ZYYuR1HMovVscWjAtyDQb6GhqrvJYnw`
+
+- Wallet B (Government Officers-Council Members 1) Hari Prasad Shah: `sDHAt4Sfn556SXvKddXjCwAeKaMpLHEKKWcfG7hfmoz`
+
+- Wallet C (Government Officers-Council Members 2) Ram Shakya: `6jaM7rGsMgk81pogFqMAGj7K8AByW8tQTTEnmDYFQpbH`
+
+- Wallet D (The DAO, Real Authority) Gagan Sher shah: `8b29vHx8ZdAQp9vNSLSgmNxeqgPZbyqE6paPdwVvXYSB`
+
+## Officer Workflow (Wallet B and C)
+
+Officers can:
+
+1. Review citizen requests.
+2. Create governance proposals in Realms.
+3. Vote on proposals in Realms.
+
+Transfer example:
+
+1. Citizen submits transfer request.
+2. Any officer creates proposal in Realms: `Approve transfer of Parcel #123 from A -> B`.
+3. Council votes: Officer 1 = Yes, Officer 2 = Yes.
+4. Threshold `2/2` passes.
+5. DAO Authority wallet executes the passed proposal path.
 
 ## What This Repo Implements
 

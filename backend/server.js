@@ -37,21 +37,21 @@ const ASSIGNED_WALLETS = [
   },
   {
     key: 'B',
-    label: 'Wallet B (Government Officers (Council Members 1))',
+    label: 'Wallet B (Government Officers-Council Members 1)',
     name: 'Hari Prasad Shah',
     role: 'council_member',
     address: ASSIGNED_WALLET_B
   },
   {
     key: 'C',
-    label: 'Wallet C (Government Officers (Council Members 2))',
+    label: 'Wallet C (Government Officers-Council Members 2)',
     name: 'Ram Shakya',
     role: 'council_member',
     address: ASSIGNED_WALLET_C
   },
   {
     key: 'D',
-    label: 'Wallet D (The DAO (Real Authority))',
+    label: 'Wallet D (The DAO, Real Authority)',
     name: 'Gagan Sher shah',
     role: 'dao_authority',
     address: ASSIGNED_WALLET_D
@@ -59,8 +59,8 @@ const ASSIGNED_WALLETS = [
 ];
 const GOVERNANCE_DAO_NAME = process.env.GOVERNANCE_DAO_NAME || 'Ward-12 Land Authority DAO';
 const GOVERNANCE_MODEL = process.env.GOVERNANCE_MODEL || 'council';
-const GOVERNANCE_COUNCIL_MEMBERS = process.env.GOVERNANCE_COUNCIL_MEMBERS || '3-5';
-const GOVERNANCE_VOTING_THRESHOLD = process.env.GOVERNANCE_VOTING_THRESHOLD || '2/3';
+const GOVERNANCE_COUNCIL_MEMBERS = process.env.GOVERNANCE_COUNCIL_MEMBERS || '2';
+const GOVERNANCE_VOTING_THRESHOLD = process.env.GOVERNANCE_VOTING_THRESHOLD || '2/2';
 const GOVERNANCE_VOTING_WINDOW_HOURS = parseInt(process.env.GOVERNANCE_VOTING_WINDOW_HOURS || '48', 10);
 
 const MONGO_URI = 'mongodb+srv://sachinacharya365official_db_user:kEX4fEHa1FNjVyWt@cluster0.k8tooiv.mongodb.net/onChain-RealmRegistry';
@@ -626,7 +626,7 @@ const seedData = async () => {
       {
         tokenId: 2,
         ownerName: 'Hari Prasad Shah',
-        ownerWallet: 'sDHAt4sfn556SXvKddXjCwAeKaMpLHEKKWcfG7hfmoz',
+        ownerWallet: 'sDHAt4Sfn556SXvKddXjCwAeKaMpLHEKKWcfG7hfmoz',
         location: {
           province: 'Bagmati',
           district: 'Lalitpur',

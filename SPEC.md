@@ -11,8 +11,8 @@
 
 - DAO name example: `Ward-12 Land Authority DAO`
 - Governance mode: `Council`
-- Council members: `3-5` government officers
-- Vote threshold: `2/3`
+- Council members: `2` government officers
+- Vote threshold: `2/2`
 - Voting window: `24-48 hours`
 - Token economy: not required
 
@@ -35,10 +35,30 @@ Realms DAO proposal -> council vote passes -> governance execution tx -> verifie
 
 ## Assigned Wallets
 
-- Citizen (Wallet A): `G6DKYcQnySUk1ZYYuR1HMovVscWjAtyDQb6GhqrvJYnw`
-- Council Member 1: `sDHAt4Sfn556SXvKddXjCwAeKaMpLHEKKWcfG7hfmoz`
-- Council Member 2: `6jaM7rGsMgk81pogFqMAGj7K8AByW8tQTTEnmDYFQpbH`
-- DAO Authority (Wallet D): `8b29vHx8ZdAQp9vNSLSgmNxeqgPZbyqE6paPdwVvXYSB`
+- Wallet A (user (Citizens)) Sachin Acharya: `G6DKYcQnySUk1ZYYuR1HMovVscWjAtyDQb6GhqrvJYnw`
+
+- Wallet B (Government Officers-Council Members 1) Hari Prasad Shah: `sDHAt4Sfn556SXvKddXjCwAeKaMpLHEKKWcfG7hfmoz`
+
+- Wallet C (Government Officers-Council Members 2) Ram Shakya: `6jaM7rGsMgk81pogFqMAGj7K8AByW8tQTTEnmDYFQpbH`
+
+- Wallet D (The DAO, Real Authority) Gagan Sher shah: `8b29vHx8ZdAQp9vNSLSgmNxeqgPZbyqE6paPdwVvXYSB`
+
+## Council Member Workflow (Wallet B and C)
+
+Officers can:
+
+1. Review citizen requests.
+2. Create governance proposals in Realms.
+3. Vote on proposals.
+
+Transfer example:
+
+1. Citizen submits transfer request.
+2. Any officer creates proposal in Realms: `Approve transfer of Parcel #123 from A -> B`.
+3. Officer 1 votes `Yes`.
+4. Officer 2 votes `Yes`.
+5. Threshold `2/2` is met and proposal passes.
+6. DAO Authority executes the passed proposal path.
 
 ## Backend Rules
 
@@ -78,6 +98,8 @@ Realms DAO proposal -> council vote passes -> governance execution tx -> verifie
 
 - No hardcoded admin wallet allowlist for approvals.
 - Council panel is shown to configured council wallets for workflow UX.
+- Wallet B and C UI is officer-flow only (review/propose/vote).
+- Wallet D UI is DAO authority execution flow only.
 - Council execution flow prompts for:
   - Realms proposal address
   - governance execution tx signature

@@ -32,6 +32,7 @@ const COUNCIL_WALLETS = (import.meta.env.VITE_COUNCIL_WALLETS || 'sDHAt4Sfn556SX
   .filter(Boolean)
 const EXAMPLE_CITIZEN_WALLET = import.meta.env.VITE_CITIZEN_WALLET || 'G6DKYcQnySUk1ZYYuR1HMovVscWjAtyDQb6GhqrvJYnw'
 const DAO_AUTHORITY_WALLET = import.meta.env.VITE_DAO_AUTHORITY_WALLET || '8b29vHx8ZdAQp9vNSLSgmNxeqgPZbyqE6paPdwVvXYSB'
+const REALMS_APP_URL = import.meta.env.VITE_REALMS_APP_URL || 'https://app.realms.today'
 
 const NepalFlag = () => (
   <svg viewBox="0 0 25 21" className="flag-wave h-9 w-auto" xmlns="http://www.w3.org/2000/svg">
@@ -59,7 +60,10 @@ const RealmRegistryLogo = ({ className = 'h-32 w-auto' }) => (
 function App() {
   const { publicKey, connected, signTransaction } = useWallet()
   const walletAddress = publicKey?.toBase58() || null
-  const isAdmin = useMemo(() => Boolean(walletAddress && COUNCIL_WALLETS.includes(walletAddress)), [walletAddress])
+  const isCouncilMember = useMemo(() => Boolean(walletAddress && COUNCIL_WALLETS.includes(walletAddress)), [walletAddress])
+  const isDaoAuthority = useMemo(() => Boolean(walletAddress && walletAddress === DAO_AUTHORITY_WALLET), [walletAddress])
+  const isOfficerWallet = isCouncilMember && !isDaoAuthority
+  const canAccessCouncilPanel = isCouncilMember || isDaoAuthority
 
   const [feeConfig, setFeeConfig] = useState({
     citizenFeeSol: 0,
@@ -76,12 +80,18 @@ function App() {
   const [stats, setStats] = useState({ totalParcels: 0, pendingRegistrations: 0, pendingTransfers: 0, pendingFreezes: 0 })
   const [governanceConfig, setGovernanceConfig] = useState({
     daoName: 'Ward-12 Land Authority DAO',
-    votingThreshold: '2/3',
-    councilMembers: '3-5',
+    votingThreshold: '2/2',
+    councilMembers: '2',
     votingWindowHours: 48,
     councilWallets: COUNCIL_WALLETS,
     authorityWallet: DAO_AUTHORITY_WALLET,
-    exampleCitizenWallet: EXAMPLE_CITIZEN_WALLET
+    exampleCitizenWallet: EXAMPLE_CITIZEN_WALLET,
+    assignedWallets: [
+      { key: 'A', label: 'Wallet A (user (Citizens))', name: 'Sachin Acharya', address: EXAMPLE_CITIZEN_WALLET },
+      { key: 'B', label: 'Wallet B (Government Officers-Council Members 1)', name: 'Hari Prasad Shah', address: COUNCIL_WALLETS[0] || '' },
+      { key: 'C', label: 'Wallet C (Government Officers-Council Members 2)', name: 'Ram Shakya', address: COUNCIL_WALLETS[1] || '' },
+      { key: 'D', label: 'Wallet D (The DAO, Real Authority)', name: 'Gagan Sher shah', address: DAO_AUTHORITY_WALLET }
+    ]
   })
   const [searchQuery, setSearchQuery] = useState('')
   const [searched, setSearched] = useState(false)
@@ -134,7 +144,8 @@ function App() {
         votingWindowHours: d.votingWindowHours ?? prev.votingWindowHours,
         councilWallets: Array.isArray(d.councilWallets) && d.councilWallets.length ? d.councilWallets : prev.councilWallets,
         authorityWallet: d.authorityWallet || prev.authorityWallet,
-        exampleCitizenWallet: d.exampleCitizenWallet || prev.exampleCitizenWallet
+        exampleCitizenWallet: d.exampleCitizenWallet || prev.exampleCitizenWallet,
+        assignedWallets: Array.isArray(d.assignedWallets) && d.assignedWallets.length ? d.assignedWallets : prev.assignedWallets
       })))
       .catch(() => { })
   }, [])
@@ -362,10 +373,14 @@ function App() {
     setTxLoading(null)
   }
 
+  const openRealmsCouncil = () => {
+    window.open(REALMS_APP_URL, '_blank', 'noopener,noreferrer')
+  }
+
   const handleCreateFreezeRequest = async () => {
     try {
       if (!walletAddress) throw new Error('Connect a council wallet first.')
-      if (!isAdmin) throw new Error('Only configured council wallets can create freeze requests.')
+      if (!canAccessCouncilPanel) throw new Error('Only configured council wallets can create freeze requests.')
       const parcelId = window.prompt('Parcel database ID or tokenId to freeze:')
       if (!parcelId || !parcelId.trim()) return
       const freezeReason = window.prompt('Freeze reason (optional):') || 'DAO council freeze review'
@@ -842,12 +857,12 @@ function App() {
                     <LayoutDashboard className="w-4 h-4" /> PORTAL
                     {activeTab === 'parcels' && <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-t-full" />}
                   </button>
-                    {isAdmin && (
+                    {canAccessCouncilPanel && (
                       <button
                         onClick={() => { setActiveTab('government'); fetchWhitelist(); fetchStats() }}
                         className={`flex items-center gap-2 px-5 py-2.5 text-sm md:text-base font-semibold transition-all relative ${activeTab === 'government' ? 'text-accent-crimson' : 'text-slate-400 hover:text-slate-600'}`}
                       >
-                      <Landmark className="w-4 h-4" /> COUNCIL
+                      <Landmark className="w-4 h-4" /> {isDaoAuthority ? 'COUNCIL AUTHORITY' : 'COUNCIL'}
                       {activeTab === 'government' && <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-accent-crimson rounded-t-full" />}
                     </button>
                   )}
@@ -857,8 +872,12 @@ function App() {
                     <div className="flex items-center gap-3">
                       <span className="hidden sm:block text-right">
                         <p className="text-xs md:text-sm font-mono text-slate-400">{truncateHash(walletAddress)}</p>
-                        <span className={`inline-flex items-center gap-1 text-[11px] md:text-xs font-bold uppercase tracking-wider ${isAdmin ? 'text-accent-crimson' : 'text-primary'}`}>
-                          {isAdmin ? <><Landmark className="w-4 h-4" /> DAO Council Flow</> : <><User className="w-4 h-4" /> Citizen</>}
+                        <span className={`inline-flex items-center gap-1 text-[11px] md:text-xs font-bold uppercase tracking-wider ${(isCouncilMember || isDaoAuthority) ? 'text-accent-crimson' : 'text-primary'}`}>
+                          {isDaoAuthority
+                            ? <><Landmark className="w-4 h-4" /> DAO Authority</>
+                            : isCouncilMember
+                              ? <><Landmark className="w-4 h-4" /> Council Member</>
+                              : <><User className="w-4 h-4" /> Citizen</>}
                         </span>
                       </span>
                       <WalletMultiButton className="!bg-slate-50 !text-slate-800 !border !border-slate-200 !rounded-full !px-5 !py-2.5 !text-sm !font-bold hover:!bg-slate-100 !transition-all" />
@@ -1151,16 +1170,16 @@ function App() {
               </div>
             )}
 
-            {activeTab === 'government' && !isAdmin && connected && (
+            {activeTab === 'government' && !canAccessCouncilPanel && connected && (
               <div className="premium-card rounded-2xl shadow-sm border border-slate-200 p-16 text-center animate-fadeIn">
                 <Landmark className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                 <h2 className="text-xl font-semibold text-slate-800 mb-2">Council member wallet required</h2>
-                <p className="text-slate-500 mb-6">Use an assigned DAO council wallet to open the council execution panel.</p>
+                <p className="text-slate-500 mb-6">Use an assigned DAO council wallet to open the council workflow panel.</p>
                 <button onClick={() => setActiveTab('explorer')} className="text-red-600 font-medium hover:underline">Go to Explorer</button>
               </div>
             )}
 
-            {activeTab === 'government' && isAdmin && (
+            {activeTab === 'government' && canAccessCouncilPanel && (
               <div className="animate-fadeIn">
                 <div className="premium-card rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
                   <h2 className="text-xl font-black text-slate-900 mb-2 flex items-center gap-2">
@@ -1172,18 +1191,34 @@ function App() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div><span className="text-slate-500">Threshold</span><br /><span className="text-slate-800 font-semibold">{governanceConfig.votingThreshold}</span></div>
                     <div><span className="text-slate-500">Voting window</span><br /><span className="text-slate-800 font-semibold">{governanceConfig.votingWindowHours}h</span></div>
-                    <div><span className="text-slate-500">DAO authority wallet</span><br /><span className="font-mono text-slate-800 break-all">{governanceConfig.authorityWallet}</span></div>
-                    <div><span className="text-slate-500">Citizen wallet (example)</span><br /><span className="font-mono text-slate-800 break-all">{governanceConfig.exampleCitizenWallet}</span></div>
                     <div className="md:col-span-2">
-                      <span className="text-slate-500">Council wallets</span><br />
+                      <span className="text-slate-500">Assigned wallets</span><br />
                       <div className="space-y-1 mt-1">
-                        {governanceConfig.councilWallets.map((w) => (
-                          <div key={w} className="font-mono text-slate-800 break-all">{w}</div>
+                        {governanceConfig.assignedWallets.map((w) => (
+                          <div key={w.key} className="text-slate-800 break-all">
+                            <span className="font-semibold">{w.label} {w.name ? `${w.name}:` : ''} </span>
+                            <span className="font-mono">{w.address}</span>
+                          </div>
                         ))}
                       </div>
                     </div>
                   </div>
                 </div>
+
+                {isOfficerWallet && (
+                  <div className="premium-card rounded-2xl shadow-sm border border-amber-200 bg-amber-50 p-6 mb-6">
+                    <h3 className="text-base font-black text-amber-900 mb-3">Council member workflow (Wallet B and C)</h3>
+                    <ul className="list-disc pl-5 space-y-1 text-sm text-amber-900">
+                      <li>Review citizen requests.</li>
+                      <li>Create governance proposals in Realms.</li>
+                      <li>Vote on proposals in Realms.</li>
+                    </ul>
+                    <div className="mt-4 text-sm text-amber-900">
+                      <p className="font-semibold">Example transfer flow (threshold 2/2):</p>
+                      <p>Citizen submits transfer request. Any Officer creates Realms proposal: "Approve transfer of Parcel #123 from A to B". Officer 1: Yes. Officer 2: Yes. Proposal passes.</p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                   <div className="premium-card rounded-2xl shadow-sm border border-slate-200 p-6 card-hover">
@@ -1237,7 +1272,11 @@ function App() {
                     <h2 className="text-lg font-black text-white flex items-center gap-2">
                       <FileCheck className="w-5 h-5 text-primary" /> Registration proposals
                     </h2>
-                    <p className="text-slate-400 text-sm mt-1">Execute only after Realms council vote passes. Provide proposal + execution proof. {feeConfig.governanceExecutionFeeSol > 0 ? `Fee: ${feeConfig.governanceExecutionFeeSol} SOL.` : 'Network fee only.'}</p>
+                    <p className="text-slate-400 text-sm mt-1">
+                      {isDaoAuthority
+                        ? `Execute only after Realms council vote passes. Provide proposal + execution proof. ${feeConfig.governanceExecutionFeeSol > 0 ? `Fee: ${feeConfig.governanceExecutionFeeSol} SOL.` : 'Network fee only.'}`
+                        : 'Review requests, create proposal in Realms, then vote. DAO Authority executes after proposal passes.'}
+                    </p>
                   </div>
                   {registrationRequests.length === 0 ? (
                     <div className="p-8 text-center text-slate-500">No pending registration requests.</div>
@@ -1270,7 +1309,7 @@ function App() {
                                 <span className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl inline-flex items-center gap-2">
                                   <Loader2 className="w-4 h-4 animate-spin" /> Processing
                                 </span>
-                              ) : (
+                              ) : isDaoAuthority ? (
                                 <div className="flex gap-2">
                                   <button
                                     onClick={(e) => {
@@ -1289,6 +1328,27 @@ function App() {
                                     className="flex items-center gap-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition text-sm"
                                   >
                                     <XCircle className="w-4 h-4" /> Reject
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      openRealmsCouncil()
+                                    }}
+                                    className="flex items-center gap-1 px-4 py-2 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition text-sm"
+                                  >
+                                    <Landmark className="w-4 h-4" /> Create Proposal
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      openRealmsCouncil()
+                                    }}
+                                    className="flex items-center gap-1 px-4 py-2 bg-slate-700 text-white rounded-xl font-medium hover:bg-slate-800 transition text-sm"
+                                  >
+                                    <CheckCircle2 className="w-4 h-4" /> Vote in Realms
                                   </button>
                                 </div>
                               )}
@@ -1321,7 +1381,11 @@ function App() {
                     <h2 className="text-lg font-black text-white flex items-center gap-2">
                       <Zap className="w-5 h-5 text-accent-crimson" /> Transfer proposals
                     </h2>
-                    <p className="text-slate-400 text-sm mt-1">Execute only after Realms council vote passes. {feeConfig.governanceExecutionFeeSol > 0 ? `Fee: ${feeConfig.governanceExecutionFeeSol} SOL.` : 'Network fee only.'}</p>
+                    <p className="text-slate-400 text-sm mt-1">
+                      {isDaoAuthority
+                        ? `Execute only after Realms council vote passes. ${feeConfig.governanceExecutionFeeSol > 0 ? `Fee: ${feeConfig.governanceExecutionFeeSol} SOL.` : 'Network fee only.'}`
+                        : 'Review transfer requests, create proposal in Realms, then vote. Example proposal: "Approve transfer of Parcel #123 from A -> B".'}
+                    </p>
                   </div>
                   {transferRequests.length === 0 ? (
                     <div className="p-8 text-center text-slate-500">No pending transfer requests.</div>
@@ -1354,7 +1418,7 @@ function App() {
                                 <span className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl inline-flex items-center gap-2">
                                   <Loader2 className="w-4 h-4 animate-spin" /> Processing
                                 </span>
-                              ) : (
+                              ) : isDaoAuthority ? (
                                 <div className="flex gap-2">
                                   <button
                                     onClick={(e) => {
@@ -1373,6 +1437,27 @@ function App() {
                                     className="flex items-center gap-1 px-4 py-2 bg-accent-crimson text-white rounded-xl font-bold hover:bg-red-700 transition text-sm"
                                   >
                                     <XCircle className="w-4 h-4" /> Reject
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      openRealmsCouncil()
+                                    }}
+                                    className="flex items-center gap-1 px-4 py-2 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition text-sm"
+                                  >
+                                    <Landmark className="w-4 h-4" /> Create Proposal
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      openRealmsCouncil()
+                                    }}
+                                    className="flex items-center gap-1 px-4 py-2 bg-slate-700 text-white rounded-xl font-medium hover:bg-slate-800 transition text-sm"
+                                  >
+                                    <CheckCircle2 className="w-4 h-4" /> Vote in Realms
                                   </button>
                                 </div>
                               )}
@@ -1421,7 +1506,11 @@ function App() {
                         <h2 className="text-lg font-black text-white flex items-center gap-2">
                           <Shield className="w-5 h-5 text-indigo-300" /> Freeze proposals
                         </h2>
-                        <p className="text-slate-400 text-sm mt-1">Freeze can only execute through a passed Realms proposal.</p>
+                        <p className="text-slate-400 text-sm mt-1">
+                          {isDaoAuthority
+                            ? 'Freeze can only execute through a passed Realms proposal.'
+                            : 'Review freeze requests, create proposal in Realms, then vote. DAO Authority executes after pass.'}
+                        </p>
                       </div>
                       <button
                         onClick={handleCreateFreezeRequest}
@@ -1444,18 +1533,37 @@ function App() {
                               <p className="text-sm text-slate-500">{item.freezeReason || 'Governance review requested'}</p>
                             </div>
                             <div className="flex gap-2">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleWhitelistAction(item._id, 'approved') }}
-                                className="flex items-center gap-1 px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition text-sm"
-                              >
-                                <CheckCircle2 className="w-4 h-4" /> Approve
-                              </button>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleWhitelistAction(item._id, 'rejected') }}
-                                className="flex items-center gap-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition text-sm"
-                              >
-                                <XCircle className="w-4 h-4" /> Reject
-                              </button>
+                              {isDaoAuthority ? (
+                                <>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleWhitelistAction(item._id, 'approved') }}
+                                    className="flex items-center gap-1 px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition text-sm"
+                                  >
+                                    <CheckCircle2 className="w-4 h-4" /> Approve
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleWhitelistAction(item._id, 'rejected') }}
+                                    className="flex items-center gap-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition text-sm"
+                                  >
+                                    <XCircle className="w-4 h-4" /> Reject
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); openRealmsCouncil() }}
+                                    className="flex items-center gap-1 px-4 py-2 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition text-sm"
+                                  >
+                                    <Landmark className="w-4 h-4" /> Create Proposal
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); openRealmsCouncil() }}
+                                    className="flex items-center gap-1 px-4 py-2 bg-slate-700 text-white rounded-xl font-medium hover:bg-slate-800 transition text-sm"
+                                  >
+                                    <CheckCircle2 className="w-4 h-4" /> Vote in Realms
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
