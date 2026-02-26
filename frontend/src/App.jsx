@@ -362,6 +362,36 @@ function App() {
     setTxLoading(null)
   }
 
+  const handleCreateFreezeRequest = async () => {
+    try {
+      if (!walletAddress) throw new Error('Connect a council wallet first.')
+      if (!isAdmin) throw new Error('Only configured council wallets can create freeze requests.')
+      const parcelId = window.prompt('Parcel database ID or tokenId to freeze:')
+      if (!parcelId || !parcelId.trim()) return
+      const freezeReason = window.prompt('Freeze reason (optional):') || 'DAO council freeze review'
+
+      const res = await fetch(`${API_BASE}/api/freeze-requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          walletAddress,
+          parcelId: parcelId.trim(),
+          freezeReason
+        })
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Failed to create freeze request')
+      }
+
+      await fetchWhitelist()
+      await fetchStats()
+      showNotification('Freeze request created. Proceed with Realms proposal and execution.', 'success')
+    } catch (err) {
+      showNotification(paymentErrorMessage(err), 'error')
+    }
+  }
+
   const handleRegistration = async (e) => {
     e.preventDefault()
     if (!walletAddress) return
