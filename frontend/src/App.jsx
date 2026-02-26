@@ -26,7 +26,12 @@ import {
 } from 'lucide-react'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000'
-const ADMIN_WALLETS = (import.meta.env.VITE_ADMIN_WALLETS || '8b29vHx8ZdAQp9vNSLSgmNxeqgPZbyqE6paPdwVvXYSB').split(',').map((w) => w.trim())
+const COUNCIL_WALLETS = (import.meta.env.VITE_COUNCIL_WALLETS || 'sDHAt4Sfn556SXvKddXjCwAeKaMpLHEKKWcfG7hfmoz,6jaM7rGsMgk81pogFqMAGj7K8AByW8tQTTEnmDYFQpbH')
+  .split(',')
+  .map((w) => w.trim())
+  .filter(Boolean)
+const EXAMPLE_CITIZEN_WALLET = import.meta.env.VITE_CITIZEN_WALLET || 'G6DKYcQnySUk1ZYYuR1HMovVscWjAtyDQb6GhqrvJYnw'
+const DAO_AUTHORITY_WALLET = import.meta.env.VITE_DAO_AUTHORITY_WALLET || '8b29vHx8ZdAQp9vNSLSgmNxeqgPZbyqE6paPdwVvXYSB'
 
 const NepalFlag = () => (
   <svg viewBox="0 0 25 21" className="flag-wave h-9 w-auto" xmlns="http://www.w3.org/2000/svg">
@@ -43,10 +48,10 @@ const NepalFlag = () => (
   </svg>
 )
 
-const JaggaChainLogo = ({ className = 'h-32 w-auto' }) => (
+const RealmRegistryLogo = ({ className = 'h-32 w-auto' }) => (
   <img
     src="/logo.png"
-    alt="JaggaChain Logo"
+    alt="RealmRegistry Logo"
     className={`${className} object-contain transition-transform duration-300 bg-transparent`}
   />
 )
@@ -54,14 +59,30 @@ const JaggaChainLogo = ({ className = 'h-32 w-auto' }) => (
 function App() {
   const { publicKey, connected, signTransaction } = useWallet()
   const walletAddress = publicKey?.toBase58() || null
-  const isAdmin = useMemo(() => walletAddress && ADMIN_WALLETS.includes(walletAddress), [walletAddress])
+  const isAdmin = useMemo(() => Boolean(walletAddress && COUNCIL_WALLETS.includes(walletAddress)), [walletAddress])
 
-  const [feeConfig, setFeeConfig] = useState({ citizenFeeSol: 0, adminFeeSol: 0, treasuryWallet: '', solanaConfigured: true })
+  const [feeConfig, setFeeConfig] = useState({
+    citizenFeeSol: 0,
+    governanceExecutionFeeSol: 0,
+    adminFeeSol: 0,
+    treasuryWallet: '',
+    solanaConfigured: true,
+    governanceConfigured: false
+  })
 
   const [activeTab, setActiveTab] = useState('landing')
   const [parcels, setParcels] = useState([])
   const [whitelist, setWhitelist] = useState([])
-  const [stats, setStats] = useState({ totalParcels: 0, pendingRegistrations: 0, pendingTransfers: 0 })
+  const [stats, setStats] = useState({ totalParcels: 0, pendingRegistrations: 0, pendingTransfers: 0, pendingFreezes: 0 })
+  const [governanceConfig, setGovernanceConfig] = useState({
+    daoName: 'Ward-12 Land Authority DAO',
+    votingThreshold: '2/3',
+    councilMembers: '3-5',
+    votingWindowHours: 48,
+    councilWallets: COUNCIL_WALLETS,
+    authorityWallet: DAO_AUTHORITY_WALLET,
+    exampleCitizenWallet: EXAMPLE_CITIZEN_WALLET
+  })
   const [searchQuery, setSearchQuery] = useState('')
   const [searched, setSearched] = useState(false)
   const [showRegisterModal, setShowRegisterModal] = useState(false)
@@ -96,10 +117,25 @@ function App() {
       .then((r) => r.json())
       .then((d) => setFeeConfig({
         citizenFeeSol: d.citizenFeeSol ?? 0.01,
-        adminFeeSol: d.adminFeeSol ?? 0.005,
+        governanceExecutionFeeSol: d.governanceExecutionFeeSol ?? d.adminFeeSol ?? 0.005,
+        adminFeeSol: d.governanceExecutionFeeSol ?? d.adminFeeSol ?? 0.005,
         treasuryWallet: d.treasuryWallet || '',
-        solanaConfigured: d.solanaConfigured !== false
+        solanaConfigured: d.solanaConfigured !== false,
+        governanceConfigured: d.governanceConfigured === true
       }))
+      .catch(() => { })
+    fetch(`${API_BASE}/api/governance/config`)
+      .then((r) => r.json())
+      .then((d) => setGovernanceConfig((prev) => ({
+        ...prev,
+        daoName: d.daoName || prev.daoName,
+        votingThreshold: d.votingThreshold || prev.votingThreshold,
+        councilMembers: d.councilMembers || prev.councilMembers,
+        votingWindowHours: d.votingWindowHours ?? prev.votingWindowHours,
+        councilWallets: Array.isArray(d.councilWallets) && d.councilWallets.length ? d.councilWallets : prev.councilWallets,
+        authorityWallet: d.authorityWallet || prev.authorityWallet,
+        exampleCitizenWallet: d.exampleCitizenWallet || prev.exampleCitizenWallet
+      })))
       .catch(() => { })
   }, [])
 
@@ -124,7 +160,7 @@ function App() {
       try {
         const data = JSON.parse(text)
         if (data.error) errMsg = data.error
-      } catch (_) {
+      } catch {
         if (text) errMsg = text.slice(0, 200)
       }
       throw new Error(errMsg)
@@ -198,59 +234,12 @@ function App() {
 
   const paymentErrorMessage = (err) => err?.message || 'Action failed. Ensure you have enough SOL and try again.'
 
-  /** Move NFT to treasury escrow. Wallet will open to confirm. */
-  const payNftTransfer = async (mintAddress) => {
-    if (!connected || !publicKey) throw new Error('Connect your wallet first.')
-    const toPubkey = feeConfig.treasuryWallet || publicKey.toBase58()
-
-    const buildRes = await fetch(`${API_BASE}/api/solana/build-nft-transfer-tx`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        mintAddress,
-        fromPubkey: publicKey.toBase58(),
-        toPubkey
-      })
-    })
-    if (!buildRes.ok) {
-      const data = await buildRes.json().catch(() => ({}))
-      throw new Error(data.error || 'Failed to build NFT transfer')
-    }
-    const { transaction: txBase64 } = await buildRes.json()
-
-    // 2. Sign and submit
-    const buf = Uint8Array.from(atob(txBase64), c => c.charCodeAt(0))
-    const tx = Transaction.from(buf)
-    const signed = await signTransaction(tx)
-
-    const serialized = signed.serialize()
-    const bytes = new Uint8Array(serialized)
-    let binary = ''
-    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-    const signedB64 = btoa(binary)
-
-    const submitRes = await fetch(`${API_BASE}/api/solana/submit-signed-tx`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ signedTransaction: signedB64 })
-    })
-    if (!submitRes.ok) {
-      const data = await submitRes.json().catch(() => ({}))
-      throw new Error(data.error || 'Failed to submit NFT transfer')
-    }
-    const { signature } = await submitRes.json()
-    return signature
-  }
-
   useEffect(() => {
     if (connected && walletAddress) {
-      if (isAdmin) fetchWhitelist()
-      else {
-        fetchParcelsByOwner(walletAddress)
-        fetchWhitelist()
-      }
+      fetchParcelsByOwner(walletAddress)
+      fetchWhitelist()
     }
-  }, [connected, walletAddress, isAdmin])
+  }, [connected, walletAddress])
 
   const fetchParcels = async () => {
     try {
@@ -312,23 +301,62 @@ function App() {
   const handleWhitelistAction = async (id, status) => {
     setTxLoading(id)
     try {
-      const paymentTxSignature = await payFeeSol(feeConfig.adminFeeSol)
-      const res = await fetch(`${API_BASE}/api/whitelist/${id}`, {
-        method: 'PUT',
+      const request = whitelist.find((w) => w._id === id)
+      if (!request) throw new Error('Request not found')
+      if (!feeConfig.governanceConfigured) {
+        throw new Error('Governance is not configured on backend. Set REALMS_* env values first.')
+      }
+
+      const promptRequired = (label) => {
+        const value = window.prompt(label)
+        if (!value || !value.trim()) {
+          throw new Error('Governance execution details are required.')
+        }
+        return value.trim()
+      }
+
+      const proposalAddress = promptRequired('Realms proposal address (passed proposal):')
+      const executionTxSignature = promptRequired('Governance execution transaction signature:')
+
+      let governanceActionTxSignature = ''
+      let parcelMintAddress = ''
+      if (status === 'approved' && request.requestType === 'registration') {
+        parcelMintAddress = promptRequired('Mint address created by governance execution:')
+        governanceActionTxSignature = promptRequired('Mint transaction signature executed by governance:')
+      } else if (status === 'approved' && request.requestType === 'transfer') {
+        governanceActionTxSignature = promptRequired('Transfer transaction signature executed by governance:')
+      } else if (status === 'approved' && request.requestType === 'freeze') {
+        governanceActionTxSignature = promptRequired('Freeze transaction signature executed by governance:')
+      }
+
+      let paymentTxSignature = ''
+      if ((feeConfig.governanceExecutionFeeSol ?? 0) > 0) {
+        paymentTxSignature = await payFeeSol(feeConfig.governanceExecutionFeeSol)
+      }
+
+      const res = await fetch(`${API_BASE}/api/governance/execute/${id}`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, paymentTxSignature }),
+        body: JSON.stringify({
+          status,
+          proposalAddress,
+          executionTxSignature,
+          governanceActionTxSignature,
+          parcelMintAddress,
+          paymentTxSignature
+        }),
       })
       if (res.ok) {
         await fetchWhitelist()
         await fetchStats()
-        if (walletAddress && !isAdmin) fetchParcelsByOwner(walletAddress)
-        showNotification(status === 'approved' ? 'Request approved. Recorded on Solana.' : 'Request rejected. Recorded on Solana.', 'success')
+        if (walletAddress) fetchParcelsByOwner(walletAddress)
+        showNotification(status === 'approved' ? 'Request executed via DAO governance.' : 'Request rejected via DAO governance.', 'success')
       } else {
         const data = await res.json().catch(() => ({}))
         showNotification(data.error || 'Action failed', 'error')
       }
     } catch (err) {
-      console.error('Failed to update whitelist:', err)
+      console.error('Failed to execute governance action:', err)
       showNotification(paymentErrorMessage(err), 'error')
     }
     setTxLoading(null)
@@ -373,7 +401,7 @@ function App() {
       await fetchWhitelist()
       setShowRegisterModal(false)
       setRegisterForm({ ownerName: '', district: '', municipality: '', ward: '', tole: '', bigha: '', kattha: '', dhur: '' })
-      showNotification('Registration submitted. Pending government approval. You will see it in My requests and in Active once approved.', 'success')
+      showNotification('Registration submitted. Pending DAO council vote in Realms.', 'success')
     } catch (err) {
       console.error('Failed to submit registration:', err)
       showNotification(paymentErrorMessage(err), 'error')
@@ -388,20 +416,10 @@ function App() {
       const parcel = myParcels.find(p => p._id === transferForm.parcelId)
       if (!parcel) throw new Error('Parcel not found')
 
-      // 1. Pay SOL fee
+      // 1. Pay submission fee
       const paymentTxSignature = await payFeeSol(feeConfig.citizenFeeSol)
 
-      // 2. Move NFT to Escrow (if it has a mintAddress)
-      let nftTransferSignature = null
-      if (parcel.mintAddress && parcel.mintAddress !== 'undefined' && feeConfig.solanaConfigured) {
-        try {
-          nftTransferSignature = await payNftTransfer(parcel.mintAddress)
-        } catch (err) {
-          console.warn('NFT transfer to escrow failed, skipping real movement (may be dev mode):', err.message)
-        }
-      }
-
-      // 3. Submit request
+      // 2. Submit request
       await fetch(`${API_BASE}/api/whitelist`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -412,15 +430,14 @@ function App() {
           toWallet: transferForm.toWallet,
           toName: transferForm.toName,
           parcelId: transferForm.parcelId,
-          paymentTxSignature,
-          nftTransferSignature
+          paymentTxSignature
         }),
       })
       await fetchWhitelist()
       setShowTransferModal(false)
       setTransferForm({ parcelId: '', toWallet: '', toName: '' })
       fetchParcelsByOwner(walletAddress)
-      showNotification('Transfer request submitted. Pending government approval.', 'success')
+      showNotification('Transfer request submitted. Pending DAO council vote in Realms.', 'success')
     } catch (err) {
       console.error('Failed to submit transfer:', err)
       showNotification(paymentErrorMessage(err), 'error')
@@ -441,6 +458,7 @@ function App() {
 
   const registrationRequests = whitelist.filter((w) => w.status === 'pending' && w.requestType === 'registration')
   const transferRequests = whitelist.filter((w) => w.status === 'pending' && w.requestType === 'transfer')
+  const freezeRequests = whitelist.filter((w) => w.status === 'pending' && w.requestType === 'freeze')
   const myRequests = walletAddress
     ? whitelist.filter((w) => w.walletAddress === walletAddress)
     : []
@@ -453,7 +471,7 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-20 items-center justify-between gap-8">
             <button onClick={() => setActiveTab('landing')} className="flex items-center group cursor-pointer">
-              <JaggaChainLogo />
+              <RealmRegistryLogo />
             </button>
             <nav className="hidden md:flex items-center gap-10 text-base lg:text-lg font-semibold text-slate-700">
               <a className="hover:text-primary transition-colors" href="#pillars">Technology</a>
@@ -679,7 +697,7 @@ function App() {
           <div className="absolute inset-0 bg-primary transform -skew-y-3 origin-bottom-right"></div>
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center text-white py-12">
             <h2 className="text-4xl font-black mb-6">Ready to Secure Your Future?</h2>
-            <p className="text-white/80 text-lg mb-10">Join the thousands of property owners who have already modernized their assets with JaggaChain.</p>
+            <p className="text-white/80 text-lg mb-10">Join the thousands of property owners who have already modernized their assets with RealmRegistry.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={() => setActiveTab('parcels')}
@@ -700,12 +718,12 @@ function App() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
             <div>
               <button onClick={() => setActiveTab('landing')} className="mb-4 flex items-center group cursor-pointer">
-                <JaggaChainLogo className="h-20 w-auto" />
+                <RealmRegistryLogo className="h-20 w-auto" />
               </button>
-              <h3 className="text-2xl font-black mb-3">JaggaChain</h3>
+              <h3 className="text-2xl font-black mb-3">RealmRegistry</h3>
               <div className="h-1 w-14 bg-primary rounded-full mb-4"></div>
               <p className="text-slate-300 leading-relaxed text-sm md:text-base max-w-md">
-                JaggaChain is an innovative side project designed to strengthen Nepal's government systems and elevate e-governance to the next level.
+                RealmRegistry is an innovative side project designed to strengthen Nepal's government systems and elevate e-governance to the next level.
               </p>
             </div>
 
@@ -713,13 +731,13 @@ function App() {
               <h3 className="text-2xl font-black mb-3">Connect With Us</h3>
               <div className="h-1 w-14 bg-fuchsia-500 rounded-full mb-5"></div>
               <a
-                href="https://github.com/sachinacharyaa/JaggaChain"
+                href="https://github.com/sachinacharyaa/RealmRegistry"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-900/70 hover:bg-slate-900 transition-colors font-semibold"
               >
                 <Github className="w-5 h-5" />
-                JaggaChain on GitHub
+                RealmRegistry on GitHub
               </a>
             </div>
 
@@ -729,7 +747,7 @@ function App() {
               <a
                 href="mailto:thesachinacharya@gmail.com"
                 className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-slate-900/70 hover:bg-slate-900 text-slate-200 hover:text-white transition-colors"
-                aria-label="Email JaggaChain"
+                aria-label="Email RealmRegistry"
                 title="thesachinacharya@gmail.com"
               >
                 <Mail className="w-5 h-5" />
@@ -738,25 +756,13 @@ function App() {
           </div>
 
           <div className="mt-10 pt-5 border-t border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm text-slate-400">
-            <p>Copyright &copy; 2026 JaggaChain</p>
+            <p>Copyright &copy; 2026 RealmRegistry</p>
             <p>{'Made with \u2764\uFE0F For Citizens'}</p>
           </div>
         </div>
       </footer>
     </div>
   )
-
-  const requireWallet = (tab) => {
-    if (tab === 'explorer') return false
-    return true
-  }
-
-  const canAccessTab = (tab) => {
-    if (tab === 'explorer') return true
-    if (!connected) return false
-    if (tab === 'government') return isAdmin
-    return true
-  }
 
   return (
     <div className="app-shell min-h-screen bg-page-nepal">
@@ -789,7 +795,7 @@ function App() {
                   onClick={() => setActiveTab('landing')}
                   className="flex items-center group cursor-pointer shrink-0"
                 >
-                  <JaggaChainLogo />
+                  <RealmRegistryLogo />
                 </button>
                 <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-4">
                   <button
@@ -806,12 +812,12 @@ function App() {
                     <LayoutDashboard className="w-4 h-4" /> PORTAL
                     {activeTab === 'parcels' && <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-t-full" />}
                   </button>
-                  {isAdmin && (
-                    <button
-                      onClick={() => { setActiveTab('government'); fetchWhitelist() }}
-                      className={`flex items-center gap-2 px-5 py-2.5 text-sm md:text-base font-semibold transition-all relative ${activeTab === 'government' ? 'text-accent-crimson' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                      <Landmark className="w-4 h-4" /> ADMIN
+                    {isAdmin && (
+                      <button
+                        onClick={() => { setActiveTab('government'); fetchWhitelist(); fetchStats() }}
+                        className={`flex items-center gap-2 px-5 py-2.5 text-sm md:text-base font-semibold transition-all relative ${activeTab === 'government' ? 'text-accent-crimson' : 'text-slate-400 hover:text-slate-600'}`}
+                      >
+                      <Landmark className="w-4 h-4" /> COUNCIL
                       {activeTab === 'government' && <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-accent-crimson rounded-t-full" />}
                     </button>
                   )}
@@ -822,7 +828,7 @@ function App() {
                       <span className="hidden sm:block text-right">
                         <p className="text-xs md:text-sm font-mono text-slate-400">{truncateHash(walletAddress)}</p>
                         <span className={`inline-flex items-center gap-1 text-[11px] md:text-xs font-bold uppercase tracking-wider ${isAdmin ? 'text-accent-crimson' : 'text-primary'}`}>
-                          {isAdmin ? <><Landmark className="w-4 h-4" /> Admin</> : <><User className="w-4 h-4" /> Citizen</>}
+                          {isAdmin ? <><Landmark className="w-4 h-4" /> DAO Council Flow</> : <><User className="w-4 h-4" /> Citizen</>}
                         </span>
                       </span>
                       <WalletMultiButton className="!bg-slate-50 !text-slate-800 !border !border-slate-200 !rounded-full !px-5 !py-2.5 !text-sm !font-bold hover:!bg-slate-100 !transition-all" />
@@ -977,7 +983,9 @@ function App() {
                                     <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
                                   )}
                                   <div>
-                                    <span className="font-medium text-slate-800">{r.requestType === 'registration' ? 'Registration' : 'Transfer'}</span>
+                                    <span className="font-medium text-slate-800">
+                                      {r.requestType === 'registration' ? 'Registration' : r.requestType === 'freeze' ? 'Freeze' : 'Transfer'}
+                                    </span>
                                     <span
                                       className={`ml-2 px-2 py-0.5 rounded text-xs font-medium ${r.status === 'pending' ? 'bg-amber-100 text-amber-800' : r.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}
                                     >
@@ -1010,6 +1018,15 @@ function App() {
                                             </a>
                                           </div>
                                         )}
+                                      </>
+                                    ) : r.requestType === 'freeze' ? (
+                                      <>
+                                        <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                                          <div><span className="text-slate-500">Requested by</span><br /><span className="font-medium text-slate-800">{r.walletAddress}</span></div>
+                                          <div><span className="text-slate-500">Parcel ID</span><br /><span className="font-mono text-slate-800">{r.parcelId || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</span></div>
+                                          <div className="col-span-2"><span className="text-slate-500">Reason</span><br /><span className="text-slate-800">{r.freezeReason || 'Governance review requested'}</span></div>
+                                          <div><span className="text-slate-500">Submitted</span><br /><span className="text-slate-800">{new Date(r.createdAt).toLocaleString()}</span></div>
+                                        </div>
                                       </>
                                     ) : (
                                       <>
@@ -1107,15 +1124,38 @@ function App() {
             {activeTab === 'government' && !isAdmin && connected && (
               <div className="premium-card rounded-2xl shadow-sm border border-slate-200 p-16 text-center animate-fadeIn">
                 <Landmark className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                <h2 className="text-xl font-semibold text-slate-800 mb-2">Admin access required</h2>
-                <p className="text-slate-500 mb-6">This area is only available to authorized government wallets.</p>
+                <h2 className="text-xl font-semibold text-slate-800 mb-2">Council member wallet required</h2>
+                <p className="text-slate-500 mb-6">Use an assigned DAO council wallet to open the council execution panel.</p>
                 <button onClick={() => setActiveTab('explorer')} className="text-red-600 font-medium hover:underline">Go to Explorer</button>
               </div>
             )}
 
             {activeTab === 'government' && isAdmin && (
               <div className="animate-fadeIn">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="premium-card rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+                  <h2 className="text-xl font-black text-slate-900 mb-2 flex items-center gap-2">
+                    <Landmark className="w-5 h-5 text-accent-crimson" /> {governanceConfig.daoName}
+                  </h2>
+                  <p className="text-slate-600 text-sm mb-3">
+                    Authority-first mode: only passed Realms proposals can execute mint, transfer, freeze, or upgrades.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div><span className="text-slate-500">Threshold</span><br /><span className="text-slate-800 font-semibold">{governanceConfig.votingThreshold}</span></div>
+                    <div><span className="text-slate-500">Voting window</span><br /><span className="text-slate-800 font-semibold">{governanceConfig.votingWindowHours}h</span></div>
+                    <div><span className="text-slate-500">DAO authority wallet</span><br /><span className="font-mono text-slate-800 break-all">{governanceConfig.authorityWallet}</span></div>
+                    <div><span className="text-slate-500">Citizen wallet (example)</span><br /><span className="font-mono text-slate-800 break-all">{governanceConfig.exampleCitizenWallet}</span></div>
+                    <div className="md:col-span-2">
+                      <span className="text-slate-500">Council wallets</span><br />
+                      <div className="space-y-1 mt-1">
+                        {governanceConfig.councilWallets.map((w) => (
+                          <div key={w} className="font-mono text-slate-800 break-all">{w}</div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                   <div className="premium-card rounded-2xl shadow-sm border border-slate-200 p-6 card-hover">
                     <div className="flex items-center gap-4">
                       <div className="p-3 rounded-xl bg-red-100">
@@ -1149,14 +1189,25 @@ function App() {
                       </div>
                     </div>
                   </div>
+                  <div className="premium-card rounded-2xl shadow-sm border border-slate-200 p-6 card-hover">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 rounded-xl bg-indigo-100">
+                        <Shield className="w-8 h-8 text-indigo-600" />
+                      </div>
+                      <div>
+                        <p className="text-3xl font-bold text-slate-800">{freezeRequests.length}</p>
+                        <p className="text-sm text-slate-500">Pending freezes</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="premium-card rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
                   <div className="bg-slate-900 px-6 py-5 border-b border-white/10">
                     <h2 className="text-lg font-black text-white flex items-center gap-2">
-                      <FileCheck className="w-5 h-5 text-primary" /> Registration requests
+                      <FileCheck className="w-5 h-5 text-primary" /> Registration proposals
                     </h2>
-                    <p className="text-slate-400 text-sm mt-1">Review and approve or reject. Action will be recorded on Solana. {feeConfig.adminFeeSol > 0 ? `Fee: ${feeConfig.adminFeeSol} SOL.` : 'Network fee only.'}</p>
+                    <p className="text-slate-400 text-sm mt-1">Execute only after Realms council vote passes. Provide proposal + execution proof. {feeConfig.governanceExecutionFeeSol > 0 ? `Fee: ${feeConfig.governanceExecutionFeeSol} SOL.` : 'Network fee only.'}</p>
                   </div>
                   {registrationRequests.length === 0 ? (
                     <div className="p-8 text-center text-slate-500">No pending registration requests.</div>
@@ -1238,9 +1289,9 @@ function App() {
                 <div className="premium-card rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                   <div className="bg-slate-900 px-6 py-5 border-b border-white/10">
                     <h2 className="text-lg font-black text-white flex items-center gap-2">
-                      <Zap className="w-5 h-5 text-accent-crimson" /> Transfer requests
+                      <Zap className="w-5 h-5 text-accent-crimson" /> Transfer proposals
                     </h2>
-                    <p className="text-slate-400 text-sm mt-1">Action will be recorded on Solana. {feeConfig.adminFeeSol > 0 ? `Fee: ${feeConfig.adminFeeSol} SOL.` : 'Network fee only.'}</p>
+                    <p className="text-slate-400 text-sm mt-1">Execute only after Realms council vote passes. {feeConfig.governanceExecutionFeeSol > 0 ? `Fee: ${feeConfig.governanceExecutionFeeSol} SOL.` : 'Network fee only.'}</p>
                   </div>
                   {transferRequests.length === 0 ? (
                     <div className="p-8 text-center text-slate-500">No pending transfer requests.</div>
@@ -1315,11 +1366,11 @@ function App() {
                                       </a>
                                     </div>
                                   )}
-                                  {item.nftTransferSignature && (
+                                  {item.governanceExecutionTxSignature && (
                                     <div className="col-span-2">
-                                      <span className="text-slate-500">NFT Escrow Signature (Proof)</span><br />
-                                      <a href={`https://explorer.solana.com/tx/${item.nftTransferSignature}?cluster=devnet`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-mono text-xs break-all flex items-center gap-1">
-                                        <ExternalLink className="w-3 h-3" /> {item.nftTransferSignature}
+                                      <span className="text-slate-500">DAO Execution Signature (Proof)</span><br />
+                                      <a href={`https://explorer.solana.com/tx/${item.governanceExecutionTxSignature}?cluster=devnet`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-mono text-xs break-all flex items-center gap-1">
+                                        <ExternalLink className="w-3 h-3" /> {item.governanceExecutionTxSignature}
                                       </a>
                                     </div>
                                   )}
@@ -1327,6 +1378,46 @@ function App() {
                               </div>
                             </div>
                           )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="premium-card rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-8">
+                  <div className="bg-slate-900 px-6 py-5 border-b border-white/10">
+                    <h2 className="text-lg font-black text-white flex items-center gap-2">
+                      <Shield className="w-5 h-5 text-indigo-300" /> Freeze proposals
+                    </h2>
+                    <p className="text-slate-400 text-sm mt-1">Freeze can only execute through a passed Realms proposal.</p>
+                  </div>
+                  {freezeRequests.length === 0 ? (
+                    <div className="p-8 text-center text-slate-500">No pending freeze requests.</div>
+                  ) : (
+                    <div className="divide-y divide-slate-100">
+                      {freezeRequests.map((item) => (
+                        <div key={item._id} className="overflow-hidden">
+                          <div className="p-6 flex flex-wrap items-center justify-between gap-4 hover:bg-slate-50 transition cursor-pointer" onClick={() => setExpandedRequestId(expandedRequestId === item._id ? null : item._id)}>
+                            <div>
+                              <h3 className="font-semibold text-slate-800">Parcel Freeze</h3>
+                              <p className="text-sm text-slate-500 font-mono">Parcel: {item.parcelId}</p>
+                              <p className="text-sm text-slate-500">{item.freezeReason || 'Governance review requested'}</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleWhitelistAction(item._id, 'approved') }}
+                                className="flex items-center gap-1 px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition text-sm"
+                              >
+                                <CheckCircle2 className="w-4 h-4" /> Approve
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleWhitelistAction(item._id, 'rejected') }}
+                                className="flex items-center gap-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition text-sm"
+                              >
+                                <XCircle className="w-4 h-4" /> Reject
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1360,7 +1451,7 @@ function App() {
             )}
             {feeConfig.solanaConfigured && (
               <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm">
-                When you submit, <strong>your wallet (e.g. Phantom) will open</strong>. Confirm the transaction there Ã¢â‚¬â€ that is your Solana proof. After government approval, a parcel NFT will be minted to your wallet.
+                When you submit, <strong>your wallet (e.g. Phantom) will open</strong>. Confirm the transaction there Ã¢â‚¬â€ that is your Solana proof. Minting happens only after a passed Realms DAO proposal is executed.
               </div>
             )}
             <form onSubmit={handleRegistration} className="space-y-4">
@@ -1450,7 +1541,7 @@ function App() {
               <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl">
                 <p className="text-sm text-blue-800 flex items-center gap-2">
                   <Zap className="w-4 h-4 shrink-0" />
-                  After government approval, an NFT will be minted on Solana and the record will be visible on Explorer. A small fee may apply.
+                  After a passed Realms DAO proposal executes, the NFT mint will be visible on Solana Explorer. A small fee may apply.
                 </p>
               </div>
               <div className="flex gap-3 pt-2">
@@ -1529,7 +1620,7 @@ function App() {
               </div>
               <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl">
                 <p className="text-sm text-amber-800">
-                  Transfer requires government approval. After approval, an NFT will be minted/updated on Solana.
+                  Transfer requires DAO council approval in Realms. After proposal execution, ownership is updated on Solana.
                 </p>
               </div>
               <div className="flex gap-3 pt-2">

@@ -12,6 +12,7 @@ import App from './App.jsx'
 // Use a public RPC that works from browser (CORS). Override with VITE_SOLANA_RPC in .env
 const SOLANA_RPC = import.meta.env.VITE_SOLANA_RPC || 'https://rpc.ankr.com/solana_devnet'
 
+// eslint-disable-next-line react-refresh/only-export-components
 function WalletWrapper() {
   const wallets = useMemo(
     () => [

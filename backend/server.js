@@ -8,12 +8,28 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Fee config: citizen pays when registering/transfer request; admin pays when approving/rejecting (proof on-chain)
+// Fee config: citizen pays when submitting; DAO execution can optionally include a governance fee.
 const FEE_CITIZEN_SOL = parseFloat(process.env.FEE_CITIZEN_SOL || '0');
-const FEE_ADMIN_SOL = parseFloat(process.env.FEE_ADMIN_SOL || '0');
-const TREASURY_WALLET = process.env.TREASURY_WALLET || '';
+const FEE_GOVERNANCE_EXECUTION_SOL = parseFloat(process.env.FEE_GOVERNANCE_EXECUTION_SOL || process.env.FEE_ADMIN_SOL || '0');
+const ENABLE_DEMO_SEED = process.env.ENABLE_DEMO_SEED === 'true';
+const REALMS_REALM_PUBKEY = process.env.REALMS_REALM_PUBKEY || '';
+const REALMS_GOVERNANCE_PUBKEY = process.env.REALMS_GOVERNANCE_PUBKEY || '';
+const REALMS_GOVERNANCE_SIGNER_PDA = process.env.REALMS_GOVERNANCE_SIGNER_PDA || '';
+const REALMS_GOVERNANCE_PROGRAM_ID = process.env.REALMS_GOVERNANCE_PROGRAM_ID || '';
+const DAO_AUTHORITY_WALLET = process.env.DAO_AUTHORITY_WALLET || '8b29vHx8ZdAQp9vNSLSgmNxeqgPZbyqE6paPdwVvXYSB';
+const TREASURY_WALLET = process.env.TREASURY_WALLET || DAO_AUTHORITY_WALLET;
+const EXAMPLE_CITIZEN_WALLET = process.env.EXAMPLE_CITIZEN_WALLET || 'G6DKYcQnySUk1ZYYuR1HMovVscWjAtyDQb6GhqrvJYnw';
+const COUNCIL_MEMBER_WALLETS = (process.env.REALMS_COUNCIL_WALLETS || 'sDHAt4Sfn556SXvKddXjCwAeKaMpLHEKKWcfG7hfmoz,6jaM7rGsMgk81pogFqMAGj7K8AByW8tQTTEnmDYFQpbH')
+  .split(',')
+  .map((w) => w.trim())
+  .filter(Boolean);
+const GOVERNANCE_DAO_NAME = process.env.GOVERNANCE_DAO_NAME || 'Ward-12 Land Authority DAO';
+const GOVERNANCE_MODEL = process.env.GOVERNANCE_MODEL || 'council';
+const GOVERNANCE_COUNCIL_MEMBERS = process.env.GOVERNANCE_COUNCIL_MEMBERS || '3-5';
+const GOVERNANCE_VOTING_THRESHOLD = process.env.GOVERNANCE_VOTING_THRESHOLD || '2/3';
+const GOVERNANCE_VOTING_WINDOW_HOURS = parseInt(process.env.GOVERNANCE_VOTING_WINDOW_HOURS || '48', 10);
 
-const MONGO_URI = 'mongodb+srv://sachinacharya365official_db_user:kEX4fEHa1FNjVyWt@cluster0.k8tooiv.mongodb.net/onChain-Jagga';
+const MONGO_URI = 'mongodb+srv://sachinacharya365official_db_user:kEX4fEHa1FNjVyWt@cluster0.k8tooiv.mongodb.net/onChain-RealmRegistry';
 
 mongoose.connect(MONGO_URI)
   .then(() => console.log('MongoDB Connected'))
@@ -62,14 +78,62 @@ const whitelistSchema = new mongoose.Schema({
   toWallet: String,
   toName: String,
   parcelId: String,
+  freezeReason: String,
   paymentTxSignature: String,      // citizen SOL fee tx (proof of payment)
-  adminPaymentTxSignature: String, // admin SOL fee tx when approve/reject
-  nftTransferSignature: String,    // real NFT transfer to escrow tx
+  governancePaymentTxSignature: String, // optional governance execution fee tx
+  governanceProposal: String,
+  governanceRealm: String,
+  governanceAccount: String,
+  governanceSigner: String,
+  governanceExecutionTxSignature: String,
+  governanceActionTxSignature: String, // mint/transfer tx executed after proposal passes
+  governanceParcelMintAddress: String, // required for approved registration
+  governanceVerifiedSlot: Number,
+  governanceVerifiedAt: Date,
+  adminPaymentTxSignature: String, // legacy field kept for backward compatibility
+  nftTransferSignature: String,    // legacy field kept for backward compatibility
   createdAt: { type: Date, default: Date.now }
 });
 
 const Parcel = mongoose.model('Parcel', parcelSchema);
 const Whitelist = mongoose.model('Whitelist', whitelistSchema);
+
+const resolveParcelByIdOrToken = async (parcelId) => {
+  if (!parcelId) return null;
+  let parcel = null;
+  const idText = String(parcelId).trim();
+  if (mongoose.Types.ObjectId.isValid(idText)) {
+    parcel = await Parcel.findById(idText);
+  }
+  if (!parcel) {
+    const tokenId = Number(idText);
+    if (Number.isFinite(tokenId)) {
+      parcel = await Parcel.findOne({ tokenId });
+    }
+  }
+  return parcel;
+};
+
+const governanceConfigured = Boolean(
+  REALMS_REALM_PUBKEY &&
+  REALMS_GOVERNANCE_PUBKEY &&
+  REALMS_GOVERNANCE_SIGNER_PDA &&
+  REALMS_GOVERNANCE_PROGRAM_ID
+);
+
+const requireGovernanceConfig = (res) => {
+  if (!governanceConfigured) {
+    res.status(503).json({
+      error: 'Realms governance is not configured. Set REALMS_REALM_PUBKEY, REALMS_GOVERNANCE_PUBKEY, REALMS_GOVERNANCE_SIGNER_PDA, and REALMS_GOVERNANCE_PROGRAM_ID.'
+    });
+    return false;
+  }
+  if (!solana.isConfigured) {
+    res.status(503).json({ error: 'Solana RPC is not configured. Set SOLANA_RPC_URL to verify governance execution.' });
+    return false;
+  }
+  return true;
+};
 
 app.get('/api/parcels', async (req, res) => {
   try {
@@ -123,9 +187,30 @@ app.get('/api/parcels/owner/:wallet', async (req, res) => {
 app.get('/api/fee-config', (req, res) => {
   res.json({
     citizenFeeSol: FEE_CITIZEN_SOL,
-    adminFeeSol: FEE_ADMIN_SOL,
+    governanceExecutionFeeSol: FEE_GOVERNANCE_EXECUTION_SOL,
+    adminFeeSol: FEE_GOVERNANCE_EXECUTION_SOL, // legacy alias for existing frontend
     treasuryWallet: TREASURY_WALLET,
-    solanaConfigured: solana.isConfigured
+    solanaConfigured: solana.isConfigured,
+    governanceConfigured
+  });
+});
+
+app.get('/api/governance/config', (req, res) => {
+  res.json({
+    daoName: GOVERNANCE_DAO_NAME,
+    model: GOVERNANCE_MODEL,
+    councilMembers: GOVERNANCE_COUNCIL_MEMBERS,
+    votingThreshold: GOVERNANCE_VOTING_THRESHOLD,
+    votingWindowHours: GOVERNANCE_VOTING_WINDOW_HOURS,
+    councilWallets: COUNCIL_MEMBER_WALLETS,
+    realm: REALMS_REALM_PUBKEY || null,
+    governance: REALMS_GOVERNANCE_PUBKEY || null,
+    governanceSigner: REALMS_GOVERNANCE_SIGNER_PDA || null,
+    governanceProgramId: REALMS_GOVERNANCE_PROGRAM_ID || null,
+    authorityWallet: DAO_AUTHORITY_WALLET,
+    treasuryWallet: TREASURY_WALLET,
+    exampleCitizenWallet: EXAMPLE_CITIZEN_WALLET,
+    governanceConfigured
   });
 });
 
@@ -203,19 +288,45 @@ app.get('/api/whitelist', async (req, res) => {
 
 app.post('/api/whitelist', async (req, res) => {
   try {
-    const { walletAddress, ownerName, requestType, location, size, toWallet, toName, parcelId, paymentTxSignature, nftTransferSignature } = req.body;
-    if (!paymentTxSignature) {
+    const { walletAddress, ownerName, requestType, location, size, toWallet, toName, parcelId, freezeReason, paymentTxSignature, nftTransferSignature } = req.body;
+    const normalizedType = requestType || 'whitelist';
+
+    if ((normalizedType === 'registration' || normalizedType === 'transfer') && !paymentTxSignature) {
       return res.status(400).json({ error: 'Payment required. Send SOL fee first and include paymentTxSignature.' });
     }
+
+    if (normalizedType === 'transfer') {
+      if (!parcelId || !toWallet || !toName) {
+        return res.status(400).json({ error: 'Transfer requests require parcelId, toWallet, and toName.' });
+      }
+      const parcel = await resolveParcelByIdOrToken(parcelId);
+      if (!parcel) return res.status(404).json({ error: 'Parcel not found.' });
+      if (parcel.status === 'frozen') {
+        return res.status(400).json({ error: 'Parcel is frozen and cannot be transferred.' });
+      }
+      if (walletAddress && parcel.ownerWallet && parcel.ownerWallet !== walletAddress) {
+        return res.status(403).json({ error: 'Only the current parcel owner can submit transfer requests.' });
+      }
+    }
+
+    if (normalizedType === 'freeze') {
+      if (!parcelId) return res.status(400).json({ error: 'Freeze requests require parcelId.' });
+      const parcel = await resolveParcelByIdOrToken(parcelId);
+      if (!parcel) return res.status(404).json({ error: 'Parcel not found.' });
+    }
+
     const request = new Whitelist({
       walletAddress,
       ownerName,
-      requestType: requestType || 'whitelist',
+      requestType: normalizedType,
       location,
       size,
       toWallet,
       toName,
-      parcelId,
+      parcelId: normalizedType === 'transfer' || normalizedType === 'freeze'
+        ? ((await resolveParcelByIdOrToken(parcelId))?._id?.toString() || parcelId)
+        : parcelId,
+      freezeReason,
       paymentTxSignature,
       nftTransferSignature // Real NFT transfer to escrow (optional if dev-mode)
     });
@@ -226,95 +337,191 @@ app.post('/api/whitelist', async (req, res) => {
   }
 });
 
-app.put('/api/whitelist/:id', async (req, res) => {
+app.post('/api/freeze-requests', async (req, res) => {
   try {
-    const { status, paymentTxSignature } = req.body;
-    if (!paymentTxSignature) {
-      return res.status(400).json({ error: 'Admin payment required. Send SOL fee first and include paymentTxSignature.' });
+    const { walletAddress, parcelId, freezeReason } = req.body;
+    if (!walletAddress || !parcelId) {
+      return res.status(400).json({ error: 'walletAddress and parcelId are required' });
     }
-    const request = await Whitelist.findByIdAndUpdate(
-      req.params.id,
-      { status, adminPaymentTxSignature: paymentTxSignature },
-      { new: true }
-    );
+    const parcel = await resolveParcelByIdOrToken(parcelId);
+    if (!parcel) return res.status(404).json({ error: 'Parcel not found.' });
 
-    // Record approve/reject on Solana (memo)
-    const recordType = request.requestType === 'registration' ? 'REGISTRATION' : 'TRANSFER';
-    const txHash = await solana.recordApprovalRejection(recordType, request._id.toString(), status);
+    const request = new Whitelist({
+      walletAddress,
+      ownerName: parcel.ownerName,
+      requestType: 'freeze',
+      location: parcel.location,
+      size: parcel.size,
+      parcelId: parcel._id.toString(),
+      freezeReason: freezeReason || 'Freeze requested by council for review.'
+    });
 
-    if (status === 'approved' && request.requestType === 'registration') {
-      const tokenId = (await Parcel.countDocuments()) + 1;
-      const { mintAddress: mintAddr, signature: mintSig } = await solana.mintParcelNFT(
-        request.walletAddress,
-        tokenId,
-        request.ownerName,
-        request.location?.district || '',
-        request.location?.municipality || ''
-      );
-      const regTxHash = await solana.recordRegistration({
-        tokenId,
-        ownerWallet: request.walletAddress,
-        ownerName: request.ownerName,
-        district: request.location?.district || '',
-        municipality: request.location?.municipality || ''
-      });
-      const newParcel = new Parcel({
-        tokenId,
-        ownerName: request.ownerName,
-        ownerWallet: request.walletAddress,
-        location: request.location,
-        size: request.size,
-        documentHash: 'Qm' + Date.now(),
-        transactionHash: mintSig || regTxHash,
-        mintAddress: mintAddr || undefined,
-        status: 'registered'
-      });
-      await newParcel.save();
-    }
-
-    if (status === 'approved' && request.requestType === 'transfer' && request.parcelId) {
-      const parcel = await Parcel.findById(request.parcelId);
-      if (parcel && parcel.mintAddress && solana.isConfigured) {
-        // Real SPL Transfer from Treasury to Buyer
-        const transferTxHash = await solana.transferParcelNFT(
-          parcel.mintAddress,
-          TREASURY_WALLET || (await solana.getProtocolPublicKey()), // From treasury
-          request.toWallet
-        );
-        parcel.ownerWallet = request.toWallet;
-        parcel.ownerName = request.toName;
-        parcel.transactionHash = transferTxHash;
-        parcel.updatedAt = new Date();
-        await parcel.save();
-      } else if (parcel) {
-        // Dev mode / Fallback
-        const transferTxHash = await solana.recordTransfer({
-          parcelId: request.parcelId,
-          fromWallet: request.walletAddress,
-          toWallet: request.toWallet || '',
-          toName: request.toName || ''
-        });
-        parcel.ownerWallet = request.toWallet;
-        parcel.ownerName = request.toName;
-        parcel.transactionHash = transferTxHash;
-        parcel.updatedAt = new Date();
-        await parcel.save();
-      }
-    }
-
-    if (status === 'rejected' && request.requestType === 'transfer' && request.parcelId) {
-      // Refund NFT to Seller
-      const parcel = await Parcel.findById(request.parcelId);
-      if (parcel && parcel.mintAddress && solana.isConfigured) {
-        await solana.transferParcelNFT(
-          parcel.mintAddress,
-          TREASURY_WALLET || (await solana.getProtocolPublicKey()),
-          request.walletAddress
-        );
-      }
-    }
-
+    await request.save();
     res.json(request);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+const applyGovernanceDecision = async (request, status, governanceMeta) => {
+  request.status = status;
+  request.governanceProposal = governanceMeta.proposalAddress;
+  request.governanceRealm = REALMS_REALM_PUBKEY;
+  request.governanceAccount = REALMS_GOVERNANCE_PUBKEY;
+  request.governanceSigner = REALMS_GOVERNANCE_SIGNER_PDA;
+  request.governanceExecutionTxSignature = governanceMeta.executionTxSignature;
+  request.governanceActionTxSignature = governanceMeta.governanceActionTxSignature || undefined;
+  request.governanceParcelMintAddress = governanceMeta.parcelMintAddress || undefined;
+  request.governanceVerifiedSlot = governanceMeta.verifiedSlot;
+  request.governanceVerifiedAt = new Date();
+  if (governanceMeta.paymentTxSignature) {
+    request.governancePaymentTxSignature = governanceMeta.paymentTxSignature;
+    request.adminPaymentTxSignature = governanceMeta.paymentTxSignature; // legacy alias
+  }
+
+  if (status === 'approved' && request.requestType === 'registration') {
+    if (!governanceMeta.governanceActionTxSignature || !governanceMeta.parcelMintAddress) {
+      throw new Error('Approved registration requires governanceActionTxSignature and parcelMintAddress.');
+    }
+
+    const actionCheck = await solana.verifyParcelAction({
+      signature: governanceMeta.governanceActionTxSignature,
+      requiredAccounts: [request.walletAddress, governanceMeta.parcelMintAddress, REALMS_GOVERNANCE_SIGNER_PDA]
+    });
+
+    if (!actionCheck.ok) {
+      throw new Error(`Mint action verification failed: ${actionCheck.reason}`);
+    }
+
+    const tokenId = (await Parcel.countDocuments()) + 1;
+    const newParcel = new Parcel({
+      tokenId,
+      ownerName: request.ownerName,
+      ownerWallet: request.walletAddress,
+      location: request.location,
+      size: request.size,
+      documentHash: 'Qm' + Date.now(),
+      transactionHash: governanceMeta.governanceActionTxSignature,
+      mintAddress: governanceMeta.parcelMintAddress,
+      status: 'registered',
+      updatedAt: new Date()
+    });
+    await newParcel.save();
+  }
+
+  if (status === 'approved' && request.requestType === 'transfer' && request.parcelId) {
+    if (!governanceMeta.governanceActionTxSignature) {
+      throw new Error('Approved transfer requires governanceActionTxSignature.');
+    }
+
+    const parcel = await resolveParcelByIdOrToken(request.parcelId);
+    if (!parcel) throw new Error('Parcel not found for transfer request.');
+    if (parcel.status === 'frozen') throw new Error('Parcel is frozen and cannot be transferred.');
+
+    const requiredAccounts = [request.walletAddress, request.toWallet, REALMS_GOVERNANCE_SIGNER_PDA];
+    if (parcel.mintAddress) requiredAccounts.push(parcel.mintAddress);
+
+    const actionCheck = await solana.verifyParcelAction({
+      signature: governanceMeta.governanceActionTxSignature,
+      requiredAccounts
+    });
+
+    if (!actionCheck.ok) {
+      throw new Error(`Transfer action verification failed: ${actionCheck.reason}`);
+    }
+
+    parcel.ownerWallet = request.toWallet;
+    parcel.ownerName = request.toName;
+    parcel.transactionHash = governanceMeta.governanceActionTxSignature;
+    parcel.updatedAt = new Date();
+    await parcel.save();
+  }
+
+  if (status === 'approved' && request.requestType === 'freeze' && request.parcelId) {
+    if (!governanceMeta.governanceActionTxSignature) {
+      throw new Error('Approved freeze requires governanceActionTxSignature.');
+    }
+    const parcel = await resolveParcelByIdOrToken(request.parcelId);
+    if (!parcel) throw new Error('Parcel not found for freeze request.');
+
+    const requiredAccounts = [parcel.ownerWallet, REALMS_GOVERNANCE_SIGNER_PDA];
+    if (parcel.mintAddress) requiredAccounts.push(parcel.mintAddress);
+
+    const actionCheck = await solana.verifyParcelAction({
+      signature: governanceMeta.governanceActionTxSignature,
+      requiredAccounts
+    });
+    if (!actionCheck.ok) {
+      throw new Error(`Freeze action verification failed: ${actionCheck.reason}`);
+    }
+
+    parcel.status = 'frozen';
+    parcel.updatedAt = new Date();
+    await parcel.save();
+  }
+
+  await request.save();
+  return request;
+};
+
+app.put('/api/whitelist/:id', async (req, res) => {
+  res.status(410).json({
+    error: 'Direct admin approvals are disabled. Use /api/governance/execute/:id with Realms DAO execution proof.'
+  });
+});
+
+app.post('/api/governance/execute/:id', async (req, res) => {
+  try {
+    if (!requireGovernanceConfig(res)) return;
+
+    const {
+      status,
+      proposalAddress,
+      executionTxSignature,
+      governanceActionTxSignature,
+      parcelMintAddress,
+      paymentTxSignature
+    } = req.body;
+
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ error: 'status must be approved or rejected' });
+    }
+    if (!proposalAddress || !executionTxSignature) {
+      return res.status(400).json({ error: 'proposalAddress and executionTxSignature are required' });
+    }
+    if (FEE_GOVERNANCE_EXECUTION_SOL > 0 && !paymentTxSignature) {
+      return res.status(400).json({ error: 'Governance execution fee required. Include paymentTxSignature.' });
+    }
+
+    const request = await Whitelist.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: 'Request not found' });
+    if (request.status !== 'pending') {
+      return res.status(400).json({ error: `Request already ${request.status}` });
+    }
+
+    const governanceCheck = await solana.verifyGovernanceExecution({
+      signature: executionTxSignature,
+      realm: REALMS_REALM_PUBKEY,
+      governance: REALMS_GOVERNANCE_PUBKEY,
+      governanceSigner: REALMS_GOVERNANCE_SIGNER_PDA,
+      proposal: proposalAddress,
+      governanceProgramId: REALMS_GOVERNANCE_PROGRAM_ID
+    });
+
+    if (!governanceCheck.ok) {
+      return res.status(403).json({ error: `Governance execution verification failed: ${governanceCheck.reason}` });
+    }
+
+    const updated = await applyGovernanceDecision(request, status, {
+      proposalAddress,
+      executionTxSignature,
+      governanceActionTxSignature,
+      parcelMintAddress,
+      paymentTxSignature,
+      verifiedSlot: governanceCheck.slot
+    });
+
+    res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -326,15 +533,16 @@ app.get('/api/stats', async (req, res) => {
     const pendingWhitelist = await Whitelist.countDocuments({ status: 'pending', requestType: 'whitelist' });
     const pendingRegistrations = await Whitelist.countDocuments({ status: 'pending', requestType: 'registration' });
     const pendingTransfers = await Whitelist.countDocuments({ status: 'pending', requestType: 'transfer' });
+    const pendingFreezes = await Whitelist.countDocuments({ status: 'pending', requestType: 'freeze' });
     const approvedWhitelist = await Whitelist.countDocuments({ status: 'approved' });
-    res.json({ totalParcels, pendingWhitelist, pendingRegistrations, pendingTransfers, approvedWhitelist });
+    res.json({ totalParcels, pendingWhitelist, pendingRegistrations, pendingTransfers, pendingFreezes, approvedWhitelist });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Remove only parcels #1 and #5 of Sachin Acharya (and related whitelist entries)
-app.post('/api/admin/cleanup-dummy', async (req, res) => {
+// Remove only parcels #1 and #5 of Sachin Acharya (and related whitelist entries).
+app.post(['/api/governance/cleanup-dummy', '/api/admin/cleanup-dummy'], async (req, res) => {
   try {
     const parcelCondition = {
       ownerName: /sachin acharya/i,
@@ -396,8 +604,8 @@ const seedData = async () => {
       },
       {
         tokenId: 3,
-        ownerName: 'Gagan Sher Shah',
-        ownerWallet: '8b29vHx8ZdAQp9vNSLSgmNxeqgPZbyqE6paPdwVvXYSB',
+        ownerName: 'Ram Shakya',
+        ownerWallet: '6jaM7rGsMgk81pogFqMAGj7K8AByW8tQTTEnmDYFQpbH',
         location: {
           province: 'Province 1',
           district: 'Birtamode',
@@ -420,7 +628,9 @@ const seedData = async () => {
   }
 };
 
-seedData();
+if (ENABLE_DEMO_SEED) {
+  seedData();
+}
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
