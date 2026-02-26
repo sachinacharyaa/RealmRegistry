@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
-import { Transaction, LAMPORTS_PER_SOL } from '@solana/web3.js'
+import { Transaction, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js'
 import {
   Search,
   MapPin,
@@ -26,13 +26,18 @@ import {
 } from 'lucide-react'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000'
-const COUNCIL_WALLETS = (import.meta.env.VITE_COUNCIL_WALLETS || 'sDHAt4Sfn556SXvKddXjCwAeKaMpLHEKKWcfG7hfmoz,6jaM7rGsMgk81pogFqMAGj7K8AByW8tQTTEnmDYFQpbH')
+// Council wallets should come from backend governance config; env fallback is optional for local dev.
+const COUNCIL_WALLETS = (import.meta.env.VITE_COUNCIL_WALLETS || '')
   .split(',')
   .map((w) => w.trim())
   .filter(Boolean)
 const EXAMPLE_CITIZEN_WALLET = import.meta.env.VITE_CITIZEN_WALLET || 'G6DKYcQnySUk1ZYYuR1HMovVscWjAtyDQb6GhqrvJYnw'
 const DAO_AUTHORITY_WALLET = import.meta.env.VITE_DAO_AUTHORITY_WALLET || '8b29vHx8ZdAQp9vNSLSgmNxeqgPZbyqE6paPdwVvXYSB'
-const REALMS_APP_URL = import.meta.env.VITE_REALMS_APP_URL || 'https://app.realms.today'
+// Base URL for Realms; DAO page is always /dao/<REALM_PUBLIC_KEY> (see openRealmsCouncil).
+const REALMS_APP_BASE = 'https://app.realms.today'
+const REALMS_APP_URL = import.meta.env.VITE_REALMS_APP_URL || REALMS_APP_BASE
+// Fallback realm so "Create in Realms" always opens the DAO page, never /realms (API may not have loaded).
+const REALMS_REALM_PUBKEY = import.meta.env.VITE_REALMS_REALM_PUBKEY || '4oZB2c7nnnEQf8FM2D3dLrVBKtcU7961w2mJiFHJSsj8'
 
 const NepalFlag = () => (
   <svg viewBox="0 0 25 21" className="flag-wave h-9 w-auto" xmlns="http://www.w3.org/2000/svg">
@@ -49,7 +54,7 @@ const NepalFlag = () => (
   </svg>
 )
 
-const RealmRegistryLogo = ({ className = 'h-32 w-auto' }) => (
+const RealmRegistryLogo = ({ className = 'h-12 w-auto' }) => (
   <img
     src="/logo.png"
     alt="RealmRegistry Logo"
@@ -60,10 +65,6 @@ const RealmRegistryLogo = ({ className = 'h-32 w-auto' }) => (
 function App() {
   const { publicKey, connected, signTransaction } = useWallet()
   const walletAddress = publicKey?.toBase58() || null
-  const isCouncilMember = useMemo(() => Boolean(walletAddress && COUNCIL_WALLETS.includes(walletAddress)), [walletAddress])
-  const isDaoAuthority = useMemo(() => Boolean(walletAddress && walletAddress === DAO_AUTHORITY_WALLET), [walletAddress])
-  const isOfficerWallet = isCouncilMember && !isDaoAuthority
-  const canAccessCouncilPanel = isCouncilMember || isDaoAuthority
 
   const [feeConfig, setFeeConfig] = useState({
     citizenFeeSol: 0,
@@ -79,7 +80,8 @@ function App() {
   const [whitelist, setWhitelist] = useState([])
   const [stats, setStats] = useState({ totalParcels: 0, pendingRegistrations: 0, pendingTransfers: 0, pendingFreezes: 0 })
   const [governanceConfig, setGovernanceConfig] = useState({
-    daoName: 'Ward-12 Land Authority DAO',
+    daoName: 'Land Authority DAO',
+    realm: null,
     votingThreshold: '2/2',
     councilMembers: '2',
     votingWindowHours: 48,
@@ -87,10 +89,10 @@ function App() {
     authorityWallet: DAO_AUTHORITY_WALLET,
     exampleCitizenWallet: EXAMPLE_CITIZEN_WALLET,
     assignedWallets: [
-      { key: 'A', label: 'Wallet A (user (Citizens))', name: 'Sachin Acharya', address: EXAMPLE_CITIZEN_WALLET },
-      { key: 'B', label: 'Wallet B (Government Officers-Council Members 1)', name: 'Hari Prasad Shah', address: COUNCIL_WALLETS[0] || '' },
-      { key: 'C', label: 'Wallet C (Government Officers-Council Members 2)', name: 'Ram Shakya', address: COUNCIL_WALLETS[1] || '' },
-      { key: 'D', label: 'Wallet D (The DAO, Real Authority)', name: 'Gagan Sher shah', address: DAO_AUTHORITY_WALLET }
+      { key: 'A', label: 'Wallet A - Citizen', address: EXAMPLE_CITIZEN_WALLET },
+      { key: 'B', label: 'Wallet B - Council Member 1', address: COUNCIL_WALLETS[0] || '' },
+      { key: 'C', label: 'Wallet C - Council Member 2', address: COUNCIL_WALLETS[1] || '' },
+      { key: 'D', label: 'Wallet D - DAO Authority', address: DAO_AUTHORITY_WALLET }
     ]
   })
   const [searchQuery, setSearchQuery] = useState('')
@@ -116,6 +118,25 @@ function App() {
   })
   const [notification, setNotification] = useState({ message: null, type: 'success' })
   const [selectedPublicParcel, setSelectedPublicParcel] = useState(null)
+  const [proposalLinkId, setProposalLinkId] = useState(null)
+  const [proposalLinkValue, setProposalLinkValue] = useState('')
+
+  // Role-gating is derived from backend governance config (no hardcoded allowlists).
+  const effectiveCouncilWallets = useMemo(() => {
+    const list = Array.isArray(governanceConfig?.councilWallets) ? governanceConfig.councilWallets : []
+    return list.length ? list : COUNCIL_WALLETS
+  }, [governanceConfig?.councilWallets])
+  const effectiveDaoAuthorityWallet = governanceConfig?.authorityWallet || DAO_AUTHORITY_WALLET
+  const isCouncilMember = useMemo(
+    () => Boolean(walletAddress && effectiveCouncilWallets.includes(walletAddress)),
+    [walletAddress, effectiveCouncilWallets]
+  )
+  const isDaoAuthority = useMemo(
+    () => Boolean(walletAddress && walletAddress === effectiveDaoAuthorityWallet),
+    [walletAddress, effectiveDaoAuthorityWallet]
+  )
+  const isOfficerWallet = isCouncilMember && !isDaoAuthority
+  const canAccessCouncilPanel = isCouncilMember || isDaoAuthority
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type })
@@ -140,6 +161,7 @@ function App() {
       .then((d) => setGovernanceConfig((prev) => ({
         ...prev,
         daoName: d.daoName || prev.daoName,
+        realm: d.realm ?? prev.realm,
         votingThreshold: d.votingThreshold || prev.votingThreshold,
         councilMembers: d.councilMembers || prev.councilMembers,
         votingWindowHours: d.votingWindowHours ?? prev.votingWindowHours,
@@ -421,13 +443,18 @@ function App() {
   }
 
   const openRealmsCouncil = () => {
-    window.open(REALMS_APP_URL, '_blank', 'noopener,noreferrer')
+    // Prefer realm from API; fallback to env or default so we never open /realms.
+    const realm = governanceConfig?.realm || REALMS_REALM_PUBKEY
+    const url = `${REALMS_APP_BASE}/dao/${realm}`
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   const getCouncilWorkflowMeta = (item) => {
     const workflow = item?.councilWorkflow || {}
     const votes = Array.isArray(workflow.votes) ? workflow.votes : []
-    const requiredApprovals = Number(workflow.requiredApprovals) > 0 ? Number(workflow.requiredApprovals) : (COUNCIL_WALLETS.length || 2)
+    const requiredApprovals = Number(workflow.requiredApprovals) > 0
+      ? Number(workflow.requiredApprovals)
+      : (effectiveCouncilWallets.length || 2)
     const approvalCount = Number(workflow.approvalCount) > 0
       ? Number(workflow.approvalCount)
       : votes.filter((v) => v?.vote === 'approved').length
@@ -443,28 +470,52 @@ function App() {
     }
   }
 
-  const handleCreateProposal = async (id) => {
+  const handleCreateProposal = (id) => {
     try {
       if (!walletAddress) throw new Error('Connect a council wallet first.')
-      if (!isOfficerWallet) throw new Error('Only council member wallets (B/C) can create proposals.')
+      if (!isOfficerWallet) throw new Error('Only council member wallets can create proposals.')
+      // Per governance rules: clicking this button should ONLY take the user to Realms.
+      // No local status changes, no backend writes, no voting state changes.
+      openRealmsCouncil()
+    } catch (err) {
+      showNotification(paymentErrorMessage(err), 'error')
+    }
+  }
+
+  const handleLinkProposal = async (id, rawAddress) => {
+    try {
+      if (!walletAddress) throw new Error('Connect a council wallet first.')
+      if (!isOfficerWallet) throw new Error('Only council member wallets can link proposals.')
+      const proposalAddress = (rawAddress || '').trim()
+      if (!proposalAddress) {
+        throw new Error('Proposal public key is required.')
+      }
+      try {
+        // Basic format validation (base58, 32 bytes)
+        // eslint-disable-next-line no-new
+        new PublicKey(proposalAddress)
+      } catch {
+        throw new Error('Invalid proposal public key format.')
+      }
+
       setTxLoading(id)
-      const proposalAddress = window.prompt('Realms proposal address (optional at creation time):') || ''
-      const res = await fetch(`${API_BASE}/api/council/proposals/${id}/create`, {
+      const res = await fetch(`${API_BASE}/api/council/proposals/${id}/link-proposal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           walletAddress,
-          proposalAddress: proposalAddress.trim()
+          proposalAddress
         })
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'Failed to create proposal')
+        throw new Error(data.error || 'Failed to link proposal')
       }
       await res.json().catch(() => ({}))
       await fetchWhitelist()
-      showNotification('Proposal created. Council members can now vote.', 'success')
-      openRealmsCouncil()
+      setProposalLinkId(null)
+      setProposalLinkValue('')
+      showNotification('Proposal linked and verified against the DAO configuration.', 'success')
     } catch (err) {
       showNotification(paymentErrorMessage(err), 'error')
     } finally {
@@ -475,7 +526,7 @@ function App() {
   const handleVoteApprove = async (id) => {
     try {
       if (!walletAddress) throw new Error('Connect a council wallet first.')
-      if (!isOfficerWallet) throw new Error('Only council member wallets (B/C) can vote.')
+      if (!isOfficerWallet) throw new Error('Only council member wallets can vote.')
       setTxLoading(id)
       const res = await fetch(`${API_BASE}/api/council/votes/${id}`, {
         method: 'POST',
@@ -644,7 +695,7 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-20 items-center justify-between gap-8">
             <button onClick={() => setActiveTab('landing')} className="flex items-center group cursor-pointer">
-              <RealmRegistryLogo />
+              <RealmRegistryLogo className="h-14 w-auto opacity-90" />
             </button>
             <nav className="hidden md:flex items-center gap-10 text-base lg:text-lg font-semibold text-slate-700">
               <a className="hover:text-primary transition-colors" href="#pillars">Technology</a>
@@ -672,7 +723,7 @@ function App() {
                   Secure <span className="text-[#c0392b]">Land Ownership</span> on the <span className="text-primary">Blockchain</span>.
                 </h1>
                 <p className="subtitle text-[15px] text-[#555] leading-[1.7] max-w-[420px]">
-                  Each registration, transfer request, approval, and rejection gets a Solana trail with explorer links.
+                  Governed in Realms. Proven on Solana. Every land action is immutable, searchable and verifiable in the explorer.
                 </p>
                 <div className="buttons flex flex-wrap gap-3 items-center">
                   <button
@@ -788,16 +839,16 @@ function App() {
         <section id="how-it-works" className="min-h-screen flex items-center">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-20">
-              <h2 className="text-3xl lg:text-4xl font-black mb-4">From Physical Asset to Digital Title</h2>
-              <p className="text-slate-500 max-w-2xl mx-auto">Our streamlined process ensures every property is legally validated and cryptographically secured in four simple steps.</p>
+              <h2 className="text-3xl lg:text-4xl font-black mb-4">How RealmRegistry Works</h2>
+              <p className="text-slate-500 max-w-2xl mx-auto">Citizens submit requests, council governs in Realms, and the DAO executes on-chain actions that the backend verifies before updating the registry.</p>
             </div>
             <div className="relative">
               <div className="grid lg:grid-cols-4 gap-8 relative z-10">
                 {[
-                  { icon: Globe, title: 'Upload Docs', desc: 'Deeds, surveys, and identity verification uploaded to our secure portal.', step: 1 },
-                  { icon: Landmark, title: 'Legal Validation', desc: 'Automated and expert legal checks ensure documentation is valid and clear.', step: 2 },
-                  { icon: Zap, title: 'Minting NFT', desc: 'Property is tokenized on the Solana blockchain as a unique asset.', step: 3 },
-                  { icon: Lock, title: 'Secure Digital Vault', desc: 'Your title is delivered to your encrypted wallet for lifetime access.', step: 4 },
+                  { icon: Globe, title: 'Submit Request', desc: 'Citizen submits land details (and fee proof when required) to start a registration, transfer, or freeze request.', step: 1 },
+                  { icon: Landmark, title: 'Create Proposal (Realms)', desc: 'Council opens Realms and creates a governance proposal for the request. Clicking in-app does not approve anything.', step: 2 },
+                  { icon: CheckCircle2, title: 'Council Vote', desc: 'Both council members vote in Realms. Only after the threshold is met does the request become eligible for DAO execution.', step: 3 },
+                  { icon: Lock, title: 'DAO Execute + Verify', desc: 'DAO authority executes the passed proposal. Backend verifies the on-chain execution/action tx before minting/updating the land title NFT.', step: 4 },
                 ].map((item, i) => (
                   <div key={i} className="flex flex-col items-center text-center group">
                     <div
@@ -890,13 +941,10 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
             <div>
-              <button onClick={() => setActiveTab('landing')} className="mb-4 flex items-center group cursor-pointer">
-                <RealmRegistryLogo className="h-20 w-auto" />
-              </button>
               <h3 className="text-2xl font-black mb-3">RealmRegistry</h3>
               <div className="h-1 w-14 bg-primary rounded-full mb-4"></div>
               <p className="text-slate-300 leading-relaxed text-sm md:text-base max-w-md">
-                RealmRegistry is an innovative side project designed to strengthen Nepal's government systems and elevate e-governance to the next level.
+                RealmRegistry is a municipal land registry where authority is controlled by a Realms DAO, not by admin wallets.
               </p>
             </div>
 
@@ -1086,7 +1134,7 @@ function App() {
                   onClick={() => setActiveTab('landing')}
                   className="flex items-center group cursor-pointer shrink-0"
                 >
-                  <RealmRegistryLogo />
+                  <RealmRegistryLogo className="h-14 w-auto opacity-90" />
                 </button>
                 <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-4">
                   <button
@@ -1430,36 +1478,21 @@ function App() {
               <div className="animate-fadeIn">
                 <div className="premium-card rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
                   <h2 className="text-xl font-black text-slate-900 mb-2 flex items-center gap-2">
-                    <Landmark className="w-5 h-5 text-accent-crimson" /> {governanceConfig.daoName}
+                    <Landmark className="w-5 h-5 text-accent-crimson" /> {((governanceConfig?.daoName) || '').replace(/Ward-12\s*/i, '').trim() || 'Land Authority DAO'}
                   </h2>
                   <p className="text-slate-600 text-sm mb-3">
                     Authority-first mode: only passed Realms proposals can execute mint, transfer, freeze, or upgrades.
                   </p>
-                  {!feeConfig.governanceConfigured && (
-                    <div className="mb-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
-                      Realms verification is not configured on backend. DAO Authority fallback mode is active: Wallet D signs and submits the Solana action transaction directly.
-                    </div>
-                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div><span className="text-slate-500">Threshold</span><br /><span className="text-slate-800 font-semibold">{governanceConfig.votingThreshold}</span></div>
-                    <div><span className="text-slate-500">Voting window</span><br /><span className="text-slate-800 font-semibold">{governanceConfig.votingWindowHours}h</span></div>
-                    <div className="md:col-span-2">
-                      <span className="text-slate-500">Assigned wallets</span><br />
-                      <div className="space-y-1 mt-1">
-                        {governanceConfig.assignedWallets.map((w) => (
-                          <div key={w.key} className="text-slate-800 break-all">
-                            <span className="font-semibold">{w.label} {w.name ? `${w.name}:` : ''} </span>
-                            <span className="font-mono">{w.address}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    <div><span className="text-slate-500">Threshold</span><br /><span className="text-slate-800 font-semibold">{governanceConfig?.votingThreshold ?? '2/2'}</span></div>
+                    <div><span className="text-slate-500">Voting window</span><br /><span className="text-slate-800 font-semibold">{governanceConfig?.votingWindowHours ?? 48}h</span></div>
+                    {/* Assigned wallets section intentionally hidden to avoid exposing specific wallet metadata in the council portal */}
                   </div>
                 </div>
 
                 {isOfficerWallet && (
                   <div className="premium-card rounded-2xl shadow-sm border border-amber-200 bg-amber-50 p-6 mb-6">
-                    <h3 className="text-base font-black text-amber-900 mb-3">Council member workflow (Wallet B and C)</h3>
+                    <h3 className="text-base font-black text-amber-900 mb-3">Council member workflow</h3>
                     <ul className="list-disc pl-5 space-y-1 text-sm text-amber-900">
                       <li>Review citizen requests.</li>
                       <li>Create governance proposals in Realms.</li>
@@ -1605,19 +1638,31 @@ function App() {
                               ) : (
                                 (() => {
                                   const council = getCouncilWorkflowMeta(item)
-                                  if (!council.proposalCreated) {
-                                    return (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          handleCreateProposal(item._id)
-                                        }}
-                                        className="flex items-center gap-1 px-4 py-2 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition text-sm"
-                                      >
-                                        <Landmark className="w-4 h-4" /> Create Proposal
-                                      </button>
-                                    )
-                                  }
+                          if (!council.proposalCreated) {
+                            return (
+                              <div className="flex flex-col sm:flex-row gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleCreateProposal(item._id)
+                                  }}
+                                  className="flex items-center gap-1 px-4 py-2 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition text-sm"
+                                >
+                                  <Landmark className="w-4 h-4" /> Create in Realms
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setExpandedRequestId(item._id)
+                                    setProposalLinkId(item._id)
+                                  }}
+                                  className="flex items-center gap-1 px-4 py-2 border border-amber-300 text-amber-900 rounded-xl font-medium hover:bg-amber-50 transition text-sm"
+                                >
+                                  Link proposal
+                                </button>
+                              </div>
+                            )
+                          }
                                   if (council.hasCurrentWalletVoted) {
                                     return (
                                       <span className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold">
@@ -1653,6 +1698,34 @@ function App() {
                                   <div><span className="text-slate-500">Land area</span><br /><span className="text-slate-800">{formatSize(item.size)}</span></div>
                                   <div><span className="text-slate-500">Submitted</span><br /><span className="text-slate-800">{new Date(item.createdAt).toLocaleString()}</span></div>
                                 </div>
+                                    {isOfficerWallet && (
+                                      <div className="mt-4 pt-4 border-t border-slate-200">
+                                        <label className="block text-xs font-semibold text-slate-500 mb-1">
+                                          Enter proposal public key
+                                        </label>
+                                        <div className="flex flex-col sm:flex-row gap-2">
+                                          <input
+                                            type="text"
+                                            className="flex-1 px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                            placeholder="Realms proposal address"
+                                            value={proposalLinkId === item._id ? proposalLinkValue : ''}
+                                            onChange={(e) => {
+                                              setProposalLinkId(item._id)
+                                              setProposalLinkValue(e.target.value)
+                                            }}
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={() => handleLinkProposal(item._id, proposalLinkId === item._id ? proposalLinkValue : '')}
+                                            disabled={txLoading === item._id}
+                                            className="px-4 py-2 bg-amber-600 text-white rounded-lg text-xs font-semibold hover:bg-amber-700 disabled:opacity-60 flex items-center justify-center gap-1"
+                                          >
+                                            {txLoading === item._id ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                                            <span>Submit</span>
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
                               </div>
                             </div>
                           )}
@@ -1748,19 +1821,31 @@ function App() {
                               ) : (
                                 (() => {
                                   const council = getCouncilWorkflowMeta(item)
-                                  if (!council.proposalCreated) {
-                                    return (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          handleCreateProposal(item._id)
-                                        }}
-                                        className="flex items-center gap-1 px-4 py-2 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition text-sm"
-                                      >
-                                        <Landmark className="w-4 h-4" /> Create Proposal
-                                      </button>
-                                    )
-                                  }
+                          if (!council.proposalCreated) {
+                            return (
+                              <div className="flex flex-col sm:flex-row gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleCreateProposal(item._id)
+                                  }}
+                                  className="flex items-center gap-1 px-4 py-2 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition text-sm"
+                                >
+                                  <Landmark className="w-4 h-4" /> Create in Realms
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setExpandedRequestId(item._id)
+                                    setProposalLinkId(item._id)
+                                  }}
+                                  className="flex items-center gap-1 px-4 py-2 border border-amber-300 text-amber-900 rounded-xl font-medium hover:bg-amber-50 transition text-sm"
+                                >
+                                  Link proposal
+                                </button>
+                              </div>
+                            )
+                          }
                                   if (council.hasCurrentWalletVoted) {
                                     return (
                                       <span className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold">
@@ -1810,6 +1895,34 @@ function App() {
                                     </div>
                                   )}
                                 </div>
+                                    {isOfficerWallet && (
+                                      <div className="mt-4 pt-4 border-t border-slate-200">
+                                        <label className="block text-xs font-semibold text-slate-500 mb-1">
+                                          Enter proposal public key
+                                        </label>
+                                        <div className="flex flex-col sm:flex-row gap-2">
+                                          <input
+                                            type="text"
+                                            className="flex-1 px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                            placeholder="Realms proposal address"
+                                            value={proposalLinkId === item._id ? proposalLinkValue : ''}
+                                            onChange={(e) => {
+                                              setProposalLinkId(item._id)
+                                              setProposalLinkValue(e.target.value)
+                                            }}
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={() => handleLinkProposal(item._id, proposalLinkId === item._id ? proposalLinkValue : '')}
+                                            disabled={txLoading === item._id}
+                                            className="px-4 py-2 bg-amber-600 text-white rounded-lg text-xs font-semibold hover:bg-amber-700 disabled:opacity-60 flex items-center justify-center gap-1"
+                                          >
+                                            {txLoading === item._id ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                                            <span>Submit</span>
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
                               </div>
                             </div>
                           )}
@@ -1893,12 +2006,24 @@ function App() {
                                   const council = getCouncilWorkflowMeta(item)
                                   if (!council.proposalCreated) {
                                     return (
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); handleCreateProposal(item._id) }}
-                                        className="flex items-center gap-1 px-4 py-2 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition text-sm"
-                                      >
-                                        <Landmark className="w-4 h-4" /> Create Proposal
-                                      </button>
+                                      <div className="flex flex-col sm:flex-row gap-2">
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); handleCreateProposal(item._id) }}
+                                          className="flex items-center gap-1 px-4 py-2 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition text-sm"
+                                        >
+                                          <Landmark className="w-4 h-4" /> Create in Realms
+                                        </button>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            setExpandedRequestId(item._id)
+                                            setProposalLinkId(item._id)
+                                          }}
+                                          className="flex items-center gap-1 px-4 py-2 border border-amber-300 text-amber-900 rounded-xl font-medium hover:bg-amber-50 transition text-sm"
+                                        >
+                                          Link proposal
+                                        </button>
+                                      </div>
                                     )
                                   }
                                   if (council.hasCurrentWalletVoted) {

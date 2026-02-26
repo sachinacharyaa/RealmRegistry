@@ -31,34 +31,34 @@ const REQUIRED_COUNCIL_APPROVALS = COUNCIL_MEMBER_WALLETS.length || 2;
 const ASSIGNED_WALLETS = [
   {
     key: 'A',
-    label: 'Wallet A (user (Citizens))',
-    name: 'Sachin Acharya',
+    label: 'Wallet A - Citizen',
+    name: '',
     role: 'citizen',
     address: ASSIGNED_WALLET_A
   },
   {
     key: 'B',
-    label: 'Wallet B (Government Officers-Council Members 1)',
-    name: 'Hari Prasad Shah',
+    label: 'Wallet B - Council Member 1',
+    name: '',
     role: 'council_member',
     address: ASSIGNED_WALLET_B
   },
   {
     key: 'C',
-    label: 'Wallet C (Government Officers-Council Members 2)',
-    name: 'Ram Shakya',
+    label: 'Wallet C - Council Member 2',
+    name: '',
     role: 'council_member',
     address: ASSIGNED_WALLET_C
   },
   {
     key: 'D',
-    label: 'Wallet D (The DAO, Real Authority)',
-    name: 'Gagan Sher shah',
+    label: 'Wallet D - DAO Authority',
+    name: '',
     role: 'dao_authority',
     address: ASSIGNED_WALLET_D
   }
 ];
-const GOVERNANCE_DAO_NAME = process.env.GOVERNANCE_DAO_NAME || 'Ward-12 Land Authority DAO';
+const GOVERNANCE_DAO_NAME = process.env.GOVERNANCE_DAO_NAME || 'Land Authority DAO';
 const GOVERNANCE_MODEL = process.env.GOVERNANCE_MODEL || 'council';
 const GOVERNANCE_COUNCIL_MEMBERS = process.env.GOVERNANCE_COUNCIL_MEMBERS || '2';
 const GOVERNANCE_VOTING_THRESHOLD = process.env.GOVERNANCE_VOTING_THRESHOLD || '2/2';
@@ -130,6 +130,7 @@ const whitelistSchema = new mongoose.Schema({
     proposalCreatedBy: String,
     proposalCreatedAt: Date,
     proposalAddress: String,
+    proposalState: { type: String, default: 'pending' },
     requiredApprovals: { type: Number, default: REQUIRED_COUNCIL_APPROVALS },
     votes: [
       {
@@ -191,6 +192,7 @@ const createInitialCouncilWorkflow = () => ({
   proposalCreatedBy: '',
   proposalCreatedAt: null,
   proposalAddress: '',
+  proposalState: 'pending',
   requiredApprovals: REQUIRED_COUNCIL_APPROVALS,
   votes: [],
   approvalCount: 0,
@@ -229,6 +231,7 @@ const normalizeCouncilWorkflow = (request) => {
     proposalCreatedBy: current.proposalCreatedBy || '',
     proposalCreatedAt: current.proposalCreatedAt || null,
     proposalAddress: current.proposalAddress || '',
+    proposalState: current.proposalState || 'pending',
     requiredApprovals,
     votes: uniqueVotes,
     approvalCount,
@@ -518,6 +521,62 @@ app.post('/api/council/proposals/:id/create', async (req, res) => {
       approvalCount: 0,
       votes: [],
       readyForDaoAuthority: false
+    };
+
+    await request.save();
+    res.json(request);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Link an existing Realms proposal to a whitelist request after it has been created in Realms.
+app.post('/api/council/proposals/:id/link-proposal', async (req, res) => {
+  try {
+    const { walletAddress, proposalAddress } = req.body;
+    if (!walletAddress || !proposalAddress) {
+      return res.status(400).json({ error: 'walletAddress and proposalAddress are required' });
+    }
+    if (!COUNCIL_MEMBER_WALLETS.includes(walletAddress)) {
+      return res.status(403).json({ error: 'Only assigned council member wallets can link proposals.' });
+    }
+    if (!requireGovernanceConfig(res)) {
+      return;
+    }
+
+    const request = await Whitelist.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: 'Request not found' });
+    if (request.status !== 'pending') {
+      return res.status(400).json({ error: `Request already ${request.status}` });
+    }
+
+    const trimmedProposal = String(proposalAddress).trim();
+    if (!trimmedProposal) {
+      return res.status(400).json({ error: 'Proposal public key is required.' });
+    }
+
+    const verification = await solana.verifyGovernanceProposal({
+      proposal: trimmedProposal,
+      governance: REALMS_GOVERNANCE_PUBKEY,
+      governanceProgramId: REALMS_GOVERNANCE_PROGRAM_ID
+    });
+
+    if (!verification.ok) {
+      return res.status(400).json({ error: verification.reason || 'Invalid proposal address' });
+    }
+
+    const workflow = normalizeCouncilWorkflow(request);
+    request.councilWorkflow = {
+      ...workflow,
+      proposalCreated: true,
+      proposalCreatedBy: walletAddress,
+      proposalCreatedAt: new Date(),
+      proposalAddress: trimmedProposal,
+      proposalState: verification.isVoting ? 'voting' : 'pending',
+      // keep votes and readiness unchanged
+      votes: workflow.votes,
+      approvalCount: workflow.approvalCount,
+      readyForDaoAuthority: workflow.readyForDaoAuthority
     };
 
     await request.save();

@@ -173,6 +173,69 @@ async function verifyParcelAction({ signature, requiredAccounts = [] }) {
   return { ok: true, slot: txResult.tx.slot }
 }
 
+/** Verify a Realms governance proposal account belongs to this DAO and check its state. */
+async function verifyGovernanceProposal({ proposal, governance, governanceProgramId }) {
+  if (!proposal || !governance || !governanceProgramId) {
+    return { ok: false, reason: 'missing governance proposal verification fields' }
+  }
+  if (!connection || !RPC_ENDPOINTS.length) {
+    return { ok: false, reason: 'Solana RPC not configured' }
+  }
+
+  const { PublicKey } = require('@solana/web3.js')
+  let proposalPk
+  try {
+    proposalPk = new PublicKey(String(proposal).trim())
+  } catch {
+    return { ok: false, reason: 'invalid proposal public key' }
+  }
+
+  let account
+  try {
+    account = await withRpcRetry((conn) => conn.getAccountInfo(proposalPk))
+  } catch (err) {
+    return { ok: false, reason: normalizeRpcError(err).message }
+  }
+
+  if (!account) {
+    return { ok: false, reason: 'proposal account not found' }
+  }
+  const owner = account.owner?.toBase58()
+  if (!owner || owner !== governanceProgramId) {
+    return { ok: false, reason: 'proposal account is not owned by the configured governance program' }
+  }
+
+  const data = account.data
+  if (!data || data.length < 1 + 32 + 32 + 1) {
+    return { ok: false, reason: 'proposal account data is too short' }
+  }
+
+  const accountType = data[0]
+  // 14 = GovernanceAccountType::ProposalV2, 5 = ProposalV1 (legacy) – accept both.
+  if (accountType !== 14 && accountType !== 5) {
+    return { ok: false, reason: 'account is not a governance proposal' }
+  }
+
+  const governancePkFromAccount = new PublicKey(data.slice(1, 33)).toBase58()
+  if (governancePkFromAccount !== governance) {
+    return { ok: false, reason: 'proposal does not belong to configured governance' }
+  }
+
+  // account_type (1) + governance (32) + governing_token_mint (32)
+  const stateOffset = 1 + 32 + 32
+  const stateByte = data[stateOffset]
+  // ProposalState::Voting (see enums.rs) has discriminant 2
+  const PROPOSAL_STATE_VOTING = 2
+  const isVoting = stateByte === PROPOSAL_STATE_VOTING
+
+  return {
+    ok: true,
+    isVoting,
+    governance: governancePkFromAccount,
+    accountType
+  }
+}
+
 /** Build unsigned SPL transfer transaction for client to sign. */
 async function buildNFTTransferTx(mintAddress, fromPubkey, toPubkey) {
   if (!connection || !RPC_ENDPOINTS.length) throw new Error('Solana RPC not configured')
@@ -316,6 +379,7 @@ module.exports = {
   buildRegistrationMintTx,
   submitSignedTx,
   verifyGovernanceExecution,
+  verifyGovernanceProposal,
   verifyParcelAction,
   isConfigured: !!initialized
 }

@@ -4,7 +4,7 @@ RealmRegistry is a municipal land registry where authority is controlled by a **
 
 ## Governance Model
 
-- DAO name example: `Ward-12 Land Authority DAO`
+- DAO name example: `Land Authority DAO`
 - Governance mode: `Council`
 - Council members: `2` government officers
 - Vote threshold: `2/2`
