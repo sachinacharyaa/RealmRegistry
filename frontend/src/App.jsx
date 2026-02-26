@@ -1297,7 +1297,7 @@ function App() {
                     </ul>
                     <div className="mt-4 text-sm text-amber-900">
                       <p className="font-semibold">Example transfer flow (threshold 2/2):</p>
-                      <p>Citizen submits transfer request. Any Officer creates Realms proposal: "Approve transfer of Parcel #123 from A to B". Officer 1: Yes. Officer 2: Yes. Proposal passes.</p>
+                      <p>Citizen submits transfer request. First action: create proposal. After proposal is created, both officers vote approve. When votes reach 2/2, it moves to DAO Authority for final execution.</p>
                     </div>
                   </div>
                 )}
@@ -1357,7 +1357,7 @@ function App() {
                     <p className="text-slate-400 text-sm mt-1">
                       {isDaoAuthority
                         ? `Execute only after Realms council vote passes. Provide proposal + execution proof. ${feeConfig.governanceExecutionFeeSol > 0 ? `Fee: ${feeConfig.governanceExecutionFeeSol} SOL.` : 'Network fee only.'}`
-                        : 'Review requests, create proposal in Realms, then vote. DAO Authority executes after proposal passes.'}
+                        : 'Officer flow: first create proposal. After proposal exists, both council members vote approve. Then DAO Authority executes.'}
                     </p>
                   </div>
                   {registrationRequests.length === 0 ? (
@@ -1377,6 +1377,14 @@ function App() {
                                 <ChevronRight className="w-5 h-5 text-slate-400" />
                               )}
                               <div>
+                                {(() => {
+                                  const council = getCouncilWorkflowMeta(item)
+                                  return (
+                                    <p className="text-xs text-slate-500 mt-1">
+                                      Council flow: {council.proposalCreated ? `Proposal created, approvals ${council.approvalCount}/${council.requiredApprovals}` : 'Proposal not created yet'}
+                                    </p>
+                                  )
+                                })()}
                                 <h3 className="font-semibold text-slate-800">{item.ownerName}</h3>
                                 <p className="text-sm text-slate-500 font-mono">{truncateHash(item.walletAddress)}</p>
                                 {item.location && (
@@ -1392,47 +1400,73 @@ function App() {
                                   <Loader2 className="w-4 h-4 animate-spin" /> Processing
                                 </span>
                               ) : isDaoAuthority ? (
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleWhitelistAction(item._id, 'approved')
-                                    }}
-                                    className="flex items-center gap-1 px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition text-sm"
-                                  >
-                                    <CheckCircle2 className="w-4 h-4" /> Approve
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleWhitelistAction(item._id, 'rejected')
-                                    }}
-                                    className="flex items-center gap-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition text-sm"
-                                  >
-                                    <XCircle className="w-4 h-4" /> Reject
-                                  </button>
-                                </div>
+                                (() => {
+                                  const council = getCouncilWorkflowMeta(item)
+                                  if (!council.readyForDaoAuthority) {
+                                    return (
+                                      <span className="px-4 py-2 bg-amber-100 text-amber-800 rounded-xl text-sm font-semibold">
+                                        Waiting council approvals ({council.approvalCount}/{council.requiredApprovals})
+                                      </span>
+                                    )
+                                  }
+                                  return (
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleWhitelistAction(item._id, 'approved')
+                                        }}
+                                        className="flex items-center gap-1 px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition text-sm"
+                                      >
+                                        <CheckCircle2 className="w-4 h-4" /> Approve
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleWhitelistAction(item._id, 'rejected')
+                                        }}
+                                        className="flex items-center gap-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition text-sm"
+                                      >
+                                        <XCircle className="w-4 h-4" /> Reject
+                                      </button>
+                                    </div>
+                                  )
+                                })()
                               ) : (
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      openRealmsCouncil()
-                                    }}
-                                    className="flex items-center gap-1 px-4 py-2 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition text-sm"
-                                  >
-                                    <Landmark className="w-4 h-4" /> Create Proposal
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      openRealmsCouncil()
-                                    }}
-                                    className="flex items-center gap-1 px-4 py-2 bg-slate-700 text-white rounded-xl font-medium hover:bg-slate-800 transition text-sm"
-                                  >
-                                    <CheckCircle2 className="w-4 h-4" /> Vote in Realms
-                                  </button>
-                                </div>
+                                (() => {
+                                  const council = getCouncilWorkflowMeta(item)
+                                  if (!council.proposalCreated) {
+                                    return (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleCreateProposal(item._id)
+                                        }}
+                                        className="flex items-center gap-1 px-4 py-2 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition text-sm"
+                                      >
+                                        <Landmark className="w-4 h-4" /> Create Proposal
+                                      </button>
+                                    )
+                                  }
+                                  if (council.hasCurrentWalletApproved) {
+                                    return (
+                                      <span className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold">
+                                        Vote Recorded
+                                      </span>
+                                    )
+                                  }
+                                  return (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleVoteApprove(item._id)
+                                      }}
+                                      className="flex items-center gap-1 px-4 py-2 bg-slate-700 text-white rounded-xl font-medium hover:bg-slate-800 transition text-sm"
+                                    >
+                                      <CheckCircle2 className="w-4 h-4" /> Vote Approve
+                                    </button>
+                                  )
+                                })()
                               )}
                             </div>
                           </div>
@@ -1466,7 +1500,7 @@ function App() {
                     <p className="text-slate-400 text-sm mt-1">
                       {isDaoAuthority
                         ? `Execute only after Realms council vote passes. ${feeConfig.governanceExecutionFeeSol > 0 ? `Fee: ${feeConfig.governanceExecutionFeeSol} SOL.` : 'Network fee only.'}`
-                        : 'Review transfer requests, create proposal in Realms, then vote. Example proposal: "Approve transfer of Parcel #123 from A -> B".'}
+                        : 'Officer flow: first create transfer proposal. Then both council members vote approve. 2/2 required before DAO Authority execution.'}
                     </p>
                   </div>
                   {transferRequests.length === 0 ? (
@@ -1486,6 +1520,14 @@ function App() {
                                 <ChevronRight className="w-5 h-5 text-slate-400" />
                               )}
                               <div>
+                                {(() => {
+                                  const council = getCouncilWorkflowMeta(item)
+                                  return (
+                                    <p className="text-xs text-slate-500 mt-1">
+                                      Council flow: {council.proposalCreated ? `Proposal created, approvals ${council.approvalCount}/${council.requiredApprovals}` : 'Proposal not created yet'}
+                                    </p>
+                                  )
+                                })()}
                                 <h3 className="font-semibold text-slate-800">{item.ownerName || 'Transfer'}</h3>
                                 <p className="text-sm text-slate-500 font-mono">From: {truncateHash(item.walletAddress)}</p>
                                 {item.toName && (
@@ -1501,47 +1543,73 @@ function App() {
                                   <Loader2 className="w-4 h-4 animate-spin" /> Processing
                                 </span>
                               ) : isDaoAuthority ? (
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleWhitelistAction(item._id, 'approved')
-                                    }}
-                                    className="flex items-center gap-1 px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition text-sm"
-                                  >
-                                    <CheckCircle2 className="w-4 h-4" /> Approve
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleWhitelistAction(item._id, 'rejected')
-                                    }}
-                                    className="flex items-center gap-1 px-4 py-2 bg-accent-crimson text-white rounded-xl font-bold hover:bg-red-700 transition text-sm"
-                                  >
-                                    <XCircle className="w-4 h-4" /> Reject
-                                  </button>
-                                </div>
+                                (() => {
+                                  const council = getCouncilWorkflowMeta(item)
+                                  if (!council.readyForDaoAuthority) {
+                                    return (
+                                      <span className="px-4 py-2 bg-amber-100 text-amber-800 rounded-xl text-sm font-semibold">
+                                        Waiting council approvals ({council.approvalCount}/{council.requiredApprovals})
+                                      </span>
+                                    )
+                                  }
+                                  return (
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleWhitelistAction(item._id, 'approved')
+                                        }}
+                                        className="flex items-center gap-1 px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition text-sm"
+                                      >
+                                        <CheckCircle2 className="w-4 h-4" /> Approve
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleWhitelistAction(item._id, 'rejected')
+                                        }}
+                                        className="flex items-center gap-1 px-4 py-2 bg-accent-crimson text-white rounded-xl font-bold hover:bg-red-700 transition text-sm"
+                                      >
+                                        <XCircle className="w-4 h-4" /> Reject
+                                      </button>
+                                    </div>
+                                  )
+                                })()
                               ) : (
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      openRealmsCouncil()
-                                    }}
-                                    className="flex items-center gap-1 px-4 py-2 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition text-sm"
-                                  >
-                                    <Landmark className="w-4 h-4" /> Create Proposal
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      openRealmsCouncil()
-                                    }}
-                                    className="flex items-center gap-1 px-4 py-2 bg-slate-700 text-white rounded-xl font-medium hover:bg-slate-800 transition text-sm"
-                                  >
-                                    <CheckCircle2 className="w-4 h-4" /> Vote in Realms
-                                  </button>
-                                </div>
+                                (() => {
+                                  const council = getCouncilWorkflowMeta(item)
+                                  if (!council.proposalCreated) {
+                                    return (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleCreateProposal(item._id)
+                                        }}
+                                        className="flex items-center gap-1 px-4 py-2 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition text-sm"
+                                      >
+                                        <Landmark className="w-4 h-4" /> Create Proposal
+                                      </button>
+                                    )
+                                  }
+                                  if (council.hasCurrentWalletApproved) {
+                                    return (
+                                      <span className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold">
+                                        Vote Recorded
+                                      </span>
+                                    )
+                                  }
+                                  return (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleVoteApprove(item._id)
+                                      }}
+                                      className="flex items-center gap-1 px-4 py-2 bg-slate-700 text-white rounded-xl font-medium hover:bg-slate-800 transition text-sm"
+                                    >
+                                      <CheckCircle2 className="w-4 h-4" /> Vote Approve
+                                    </button>
+                                  )
+                                })()
                               )}
                             </div>
                           </div>
@@ -1591,7 +1659,7 @@ function App() {
                         <p className="text-slate-400 text-sm mt-1">
                           {isDaoAuthority
                             ? 'Freeze can only execute through a passed Realms proposal.'
-                            : 'Review freeze requests, create proposal in Realms, then vote. DAO Authority executes after pass.'}
+                            : 'Officer flow: create freeze proposal first, then both council members vote approve. DAO Authority executes after 2/2.'}
                         </p>
                       </div>
                       <button
@@ -1613,38 +1681,72 @@ function App() {
                               <h3 className="font-semibold text-slate-800">Parcel Freeze</h3>
                               <p className="text-sm text-slate-500 font-mono">Parcel: {item.parcelId}</p>
                               <p className="text-sm text-slate-500">{item.freezeReason || 'Governance review requested'}</p>
+                              {(() => {
+                                const council = getCouncilWorkflowMeta(item)
+                                return (
+                                  <p className="text-xs text-slate-500 mt-1">
+                                    Council flow: {council.proposalCreated ? `Proposal created, approvals ${council.approvalCount}/${council.requiredApprovals}` : 'Proposal not created yet'}
+                                  </p>
+                                )
+                              })()}
                             </div>
                             <div className="flex gap-2">
                               {isDaoAuthority ? (
-                                <>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleWhitelistAction(item._id, 'approved') }}
-                                    className="flex items-center gap-1 px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition text-sm"
-                                  >
-                                    <CheckCircle2 className="w-4 h-4" /> Approve
-                                  </button>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleWhitelistAction(item._id, 'rejected') }}
-                                    className="flex items-center gap-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition text-sm"
-                                  >
-                                    <XCircle className="w-4 h-4" /> Reject
-                                  </button>
-                                </>
+                                (() => {
+                                  const council = getCouncilWorkflowMeta(item)
+                                  if (!council.readyForDaoAuthority) {
+                                    return (
+                                      <span className="px-4 py-2 bg-amber-100 text-amber-800 rounded-xl text-sm font-semibold">
+                                        Waiting council approvals ({council.approvalCount}/{council.requiredApprovals})
+                                      </span>
+                                    )
+                                  }
+                                  return (
+                                    <>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleWhitelistAction(item._id, 'approved') }}
+                                        className="flex items-center gap-1 px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition text-sm"
+                                      >
+                                        <CheckCircle2 className="w-4 h-4" /> Approve
+                                      </button>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleWhitelistAction(item._id, 'rejected') }}
+                                        className="flex items-center gap-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition text-sm"
+                                      >
+                                        <XCircle className="w-4 h-4" /> Reject
+                                      </button>
+                                    </>
+                                  )
+                                })()
                               ) : (
-                                <>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); openRealmsCouncil() }}
-                                    className="flex items-center gap-1 px-4 py-2 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition text-sm"
-                                  >
-                                    <Landmark className="w-4 h-4" /> Create Proposal
-                                  </button>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); openRealmsCouncil() }}
-                                    className="flex items-center gap-1 px-4 py-2 bg-slate-700 text-white rounded-xl font-medium hover:bg-slate-800 transition text-sm"
-                                  >
-                                    <CheckCircle2 className="w-4 h-4" /> Vote in Realms
-                                  </button>
-                                </>
+                                (() => {
+                                  const council = getCouncilWorkflowMeta(item)
+                                  if (!council.proposalCreated) {
+                                    return (
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleCreateProposal(item._id) }}
+                                        className="flex items-center gap-1 px-4 py-2 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition text-sm"
+                                      >
+                                        <Landmark className="w-4 h-4" /> Create Proposal
+                                      </button>
+                                    )
+                                  }
+                                  if (council.hasCurrentWalletApproved) {
+                                    return (
+                                      <span className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold">
+                                        Vote Recorded
+                                      </span>
+                                    )
+                                  }
+                                  return (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleVoteApprove(item._id) }}
+                                      className="flex items-center gap-1 px-4 py-2 bg-slate-700 text-white rounded-xl font-medium hover:bg-slate-800 transition text-sm"
+                                    >
+                                      <CheckCircle2 className="w-4 h-4" /> Vote Approve
+                                    </button>
+                                  )
+                                })()
                               )}
                             </div>
                           </div>

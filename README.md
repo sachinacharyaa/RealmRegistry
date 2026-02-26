@@ -44,10 +44,11 @@ Officers can:
 Transfer example:
 
 1. Citizen submits transfer request.
-2. Any officer creates proposal in Realms: `Approve transfer of Parcel #123 from A -> B`.
-3. Council votes: Officer 1 = Yes, Officer 2 = Yes.
-4. Threshold `2/2` passes.
-5. DAO Authority wallet executes the passed proposal path.
+2. Only `Create Proposal` action is available first.
+3. After proposal is created, both council members get `Vote Approve`.
+4. Council votes: Officer 1 = Yes, Officer 2 = Yes.
+5. Threshold `2/2` passes and request becomes ready for DAO authority.
+6. DAO Authority wallet executes the passed proposal path.
 
 ## What This Repo Implements
 
@@ -78,6 +79,8 @@ Optional:
 
 - `POST /api/whitelist`: citizen registration/transfer request submission.
 - `POST /api/freeze-requests`: create a freeze request for DAO vote/execution.
+- `POST /api/council/proposals/:id/create`: council member creates proposal step.
+- `POST /api/council/votes/:id`: council member vote step (`approved`/`rejected`).
 - `POST /api/governance/execute/:id`: DAO-only execution path (requires proposal + execution proof).
 - `PUT /api/whitelist/:id`: disabled intentionally (returns 410).
 - `GET /api/governance/config`: returns DAO/governance configuration for UI.
