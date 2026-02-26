@@ -30,17 +30,26 @@ Realms DAO proposal -> council vote passes -> governance execution tx -> verifie
 
 1. Land NFT mint authority must be governance-controlled.
 2. Transfer approval must be governance execution only.
-3. Program upgrade authority must be Realms Governance PDA.
+3. Parcel freeze authority must be governance execution only.
+4. Program upgrade authority must be Realms Governance PDA.
+
+## Assigned Wallets
+
+- Citizen (Wallet A): `G6DKYcQnySUk1ZYYuR1HMovVscWjAtyDQb6GhqrvJYnw`
+- Council Member 1: `sDHAt4Sfn556SXvKddXjCwAeKaMpLHEKKWcfG7hfmoz`
+- Council Member 2: `6jaM7rGsMgk81pogFqMAGj7K8AByW8tQTTEnmDYFQpbH`
+- DAO Authority (Wallet D): `8b29vHx8ZdAQp9vNSLSgmNxeqgPZbyqE6paPdwVvXYSB`
 
 ## Backend Rules
 
 - `PUT /api/whitelist/:id` is disabled.
 - `POST /api/governance/execute/:id` is the only approval/rejection path.
+- `POST /api/freeze-requests` creates pending freeze requests for DAO workflow.
 - Backend verifies:
   - proposal execution transaction exists and is confirmed
   - transaction includes configured `realm`, `governance`, `governance signer PDA`, `proposal`
   - transaction calls configured `REALMS_GOVERNANCE_PROGRAM_ID`
-- For approved registration/transfer:
+- For approved registration/transfer/freeze:
   - governance action transaction proof is required
   - required parcel accounts must appear in that action transaction
 
@@ -68,6 +77,7 @@ Realms DAO proposal -> council vote passes -> governance execution tx -> verifie
 ## Frontend Rules
 
 - No hardcoded admin wallet allowlist for approvals.
+- Council panel is shown to configured council wallets for workflow UX.
 - Council execution flow prompts for:
   - Realms proposal address
   - governance execution tx signature

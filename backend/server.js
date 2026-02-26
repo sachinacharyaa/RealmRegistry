@@ -16,13 +16,47 @@ const REALMS_REALM_PUBKEY = process.env.REALMS_REALM_PUBKEY || '';
 const REALMS_GOVERNANCE_PUBKEY = process.env.REALMS_GOVERNANCE_PUBKEY || '';
 const REALMS_GOVERNANCE_SIGNER_PDA = process.env.REALMS_GOVERNANCE_SIGNER_PDA || '';
 const REALMS_GOVERNANCE_PROGRAM_ID = process.env.REALMS_GOVERNANCE_PROGRAM_ID || '';
-const DAO_AUTHORITY_WALLET = process.env.DAO_AUTHORITY_WALLET || '8b29vHx8ZdAQp9vNSLSgmNxeqgPZbyqE6paPdwVvXYSB';
+const ASSIGNED_WALLET_A = process.env.EXAMPLE_CITIZEN_WALLET || 'G6DKYcQnySUk1ZYYuR1HMovVscWjAtyDQb6GhqrvJYnw';
+const ASSIGNED_WALLET_B = process.env.COUNCIL_MEMBER_1_WALLET || 'sDHAt4Sfn556SXvKddXjCwAeKaMpLHEKKWcfG7hfmoz';
+const ASSIGNED_WALLET_C = process.env.COUNCIL_MEMBER_2_WALLET || '6jaM7rGsMgk81pogFqMAGj7K8AByW8tQTTEnmDYFQpbH';
+const ASSIGNED_WALLET_D = process.env.DAO_AUTHORITY_WALLET || '8b29vHx8ZdAQp9vNSLSgmNxeqgPZbyqE6paPdwVvXYSB';
+const DAO_AUTHORITY_WALLET = ASSIGNED_WALLET_D;
 const TREASURY_WALLET = process.env.TREASURY_WALLET || DAO_AUTHORITY_WALLET;
-const EXAMPLE_CITIZEN_WALLET = process.env.EXAMPLE_CITIZEN_WALLET || 'G6DKYcQnySUk1ZYYuR1HMovVscWjAtyDQb6GhqrvJYnw';
-const COUNCIL_MEMBER_WALLETS = (process.env.REALMS_COUNCIL_WALLETS || 'sDHAt4Sfn556SXvKddXjCwAeKaMpLHEKKWcfG7hfmoz,6jaM7rGsMgk81pogFqMAGj7K8AByW8tQTTEnmDYFQpbH')
+const EXAMPLE_CITIZEN_WALLET = ASSIGNED_WALLET_A;
+const COUNCIL_MEMBER_WALLETS = (process.env.REALMS_COUNCIL_WALLETS || `${ASSIGNED_WALLET_B},${ASSIGNED_WALLET_C}`)
   .split(',')
   .map((w) => w.trim())
   .filter(Boolean);
+const ASSIGNED_WALLETS = [
+  {
+    key: 'A',
+    label: 'Wallet A (user (Citizens))',
+    name: 'Sachin Acharya',
+    role: 'citizen',
+    address: ASSIGNED_WALLET_A
+  },
+  {
+    key: 'B',
+    label: 'Wallet B (Government Officers (Council Members 1))',
+    name: 'Hari Prasad Shah',
+    role: 'council_member',
+    address: ASSIGNED_WALLET_B
+  },
+  {
+    key: 'C',
+    label: 'Wallet C (Government Officers (Council Members 2))',
+    name: 'Ram Shakya',
+    role: 'council_member',
+    address: ASSIGNED_WALLET_C
+  },
+  {
+    key: 'D',
+    label: 'Wallet D (The DAO (Real Authority))',
+    name: 'Gagan Sher shah',
+    role: 'dao_authority',
+    address: ASSIGNED_WALLET_D
+  }
+];
 const GOVERNANCE_DAO_NAME = process.env.GOVERNANCE_DAO_NAME || 'Ward-12 Land Authority DAO';
 const GOVERNANCE_MODEL = process.env.GOVERNANCE_MODEL || 'council';
 const GOVERNANCE_COUNCIL_MEMBERS = process.env.GOVERNANCE_COUNCIL_MEMBERS || '3-5';
@@ -210,6 +244,7 @@ app.get('/api/governance/config', (req, res) => {
     authorityWallet: DAO_AUTHORITY_WALLET,
     treasuryWallet: TREASURY_WALLET,
     exampleCitizenWallet: EXAMPLE_CITIZEN_WALLET,
+    assignedWallets: ASSIGNED_WALLETS,
     governanceConfigured
   });
 });
