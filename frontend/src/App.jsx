@@ -115,6 +115,7 @@ function App() {
     toName: '',
   })
   const [notification, setNotification] = useState({ message: null, type: 'success' })
+  const [selectedPublicParcel, setSelectedPublicParcel] = useState(null)
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type })
@@ -151,9 +152,32 @@ function App() {
   }, [])
 
   /** Pay SOL fee via backend-built tx: no frontend RPC needed. User signs in wallet; backend submits. Returns signature as proof. */
-  const payFeeSol = async (amountSol) => {
+  const signAndSubmitTxBase64 = async (txBase64) => {
     if (!publicKey) throw new Error('Connect your wallet first.')
     if (!signTransaction) throw new Error('Your wallet does not support signing. Try Phantom or Solflare.')
+    const buf = Uint8Array.from(atob(txBase64), c => c.charCodeAt(0))
+    const tx = Transaction.from(buf)
+    const signed = await signTransaction(tx)
+    const serialized = signed.serialize()
+    const bytes = new Uint8Array(serialized)
+    let binary = ''
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+    const signedB64 = btoa(binary)
+    const submitRes = await fetch(`${API_BASE}/api/solana/submit-signed-tx`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ signedTransaction: signedB64 })
+    })
+    if (!submitRes.ok) {
+      const data = await submitRes.json().catch(() => ({}))
+      throw new Error(data.error || 'Failed to submit transaction')
+    }
+    const { signature } = await submitRes.json()
+    return signature
+  }
+
+  const payFeeSol = async (amountSol) => {
+    if (!publicKey) throw new Error('Connect your wallet first.')
     const toPubkey = feeConfig.treasuryWallet || publicKey.toBase58()
     const lamports = Math.floor(amountSol * LAMPORTS_PER_SOL)
     const buildRes = await fetch(`${API_BASE}/api/solana/build-fee-tx`, {
@@ -177,25 +201,7 @@ function App() {
       throw new Error(errMsg)
     }
     const { transaction: txBase64 } = await buildRes.json()
-    const buf = Uint8Array.from(atob(txBase64), c => c.charCodeAt(0))
-    const tx = Transaction.from(buf)
-    const signed = await signTransaction(tx)
-    const serialized = signed.serialize()
-    const bytes = new Uint8Array(serialized)
-    let binary = ''
-    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-    const signedB64 = btoa(binary)
-    const submitRes = await fetch(`${API_BASE}/api/solana/submit-signed-tx`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ signedTransaction: signedB64 })
-    })
-    if (!submitRes.ok) {
-      const data = await submitRes.json().catch(() => ({}))
-      throw new Error(data.error || 'Failed to submit transaction')
-    }
-    const { signature } = await submitRes.json()
-    return signature
+    return await signAndSubmitTxBase64(txBase64)
   }
 
   /** Pay registration fee and record details in one tx. Wallet will open to confirm Ã¢â‚¬â€ that's your Solana proof. */
@@ -219,31 +225,28 @@ function App() {
     }
     const { transaction: txBase64 } = await buildRes.json()
 
-    // 2. Sign and submit
-    const buf = Uint8Array.from(atob(txBase64), c => c.charCodeAt(0))
-    const tx = Transaction.from(buf)
-    const signed = await signTransaction(tx)
-
-    const serialized = signed.serialize()
-    const bytes = new Uint8Array(serialized)
-    let binary = ''
-    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-    const signedB64 = btoa(binary)
-
-    const submitRes = await fetch(`${API_BASE}/api/solana/submit-signed-tx`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ signedTransaction: signedB64 })
-    })
-    if (!submitRes.ok) {
-      const data = await submitRes.json().catch(() => ({}))
-      throw new Error(data.error || 'Failed to submit registration tx')
-    }
-    const { signature } = await submitRes.json()
-    return signature
+    return await signAndSubmitTxBase64(txBase64)
   }
 
   const paymentErrorMessage = (err) => err?.message || 'Action failed. Ensure you have enough SOL and try again.'
+  const readApiError = async (res, fallbackMessage) => {
+    const text = await res.text().catch(() => '')
+    if (text) {
+      try {
+        const data = JSON.parse(text)
+        if (data?.error) return data.error
+      } catch {
+        // non-JSON response body
+      }
+    }
+    if (res.status === 404) {
+      return 'Backend mint endpoint not found (404). Restart backend to load latest API routes.'
+    }
+    if (res.status === 503) {
+      return 'Backend Solana RPC unavailable. Check SOLANA_RPC_URL and backend connectivity.'
+    }
+    return (text && text.trim()) || fallbackMessage
+  }
 
   useEffect(() => {
     if (connected && walletAddress) {
@@ -314,9 +317,7 @@ function App() {
     try {
       const request = whitelist.find((w) => w._id === id)
       if (!request) throw new Error('Request not found')
-      if (!feeConfig.governanceConfigured) {
-        throw new Error('Governance is not configured on backend. Set REALMS_* env values first.')
-      }
+      const useDaoFallback = !feeConfig.governanceConfigured
 
       const promptRequired = (label) => {
         const value = window.prompt(label)
@@ -326,18 +327,58 @@ function App() {
         return value.trim()
       }
 
-      const proposalAddress = promptRequired('Realms proposal address (passed proposal):')
-      const executionTxSignature = promptRequired('Governance execution transaction signature:')
+      let proposalAddress = ''
+      let executionTxSignature = ''
+      if (!useDaoFallback) {
+        proposalAddress = promptRequired('Realms proposal address (passed proposal):')
+        executionTxSignature = promptRequired('Governance execution transaction signature:')
+      }
 
       let governanceActionTxSignature = ''
       let parcelMintAddress = ''
       if (status === 'approved' && request.requestType === 'registration') {
-        parcelMintAddress = promptRequired('Mint address created by governance execution:')
-        governanceActionTxSignature = promptRequired('Mint transaction signature executed by governance:')
+        if (useDaoFallback) {
+          if (!walletAddress) throw new Error('Connect DAO authority wallet first.')
+          const mintRes = await fetch(`${API_BASE}/api/solana/build-registration-mint-tx`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fromPubkey: walletAddress,
+              toPubkey: request.walletAddress
+            })
+          })
+          if (!mintRes.ok) {
+            const reason = await readApiError(mintRes, 'Failed to build registration mint tx')
+            throw new Error(reason)
+          }
+          const mintData = await mintRes.json()
+          governanceActionTxSignature = await signAndSubmitTxBase64(mintData.transaction)
+          parcelMintAddress = mintData.mintAddress
+          proposalAddress = request?.councilWorkflow?.proposalAddress || `dao-fallback-${id}`
+          executionTxSignature = governanceActionTxSignature
+        } else {
+          parcelMintAddress = promptRequired('Mint address created by governance execution:')
+          governanceActionTxSignature = promptRequired('Mint transaction signature executed by governance:')
+        }
       } else if (status === 'approved' && request.requestType === 'transfer') {
-        governanceActionTxSignature = promptRequired('Transfer transaction signature executed by governance:')
+        governanceActionTxSignature = useDaoFallback
+          ? promptRequired('Transfer transaction signature (from DAO-approved transfer on Solana):')
+          : promptRequired('Transfer transaction signature executed by governance:')
+        if (useDaoFallback) {
+          proposalAddress = request?.councilWorkflow?.proposalAddress || `dao-fallback-${id}`
+          executionTxSignature = governanceActionTxSignature
+        }
       } else if (status === 'approved' && request.requestType === 'freeze') {
-        governanceActionTxSignature = promptRequired('Freeze transaction signature executed by governance:')
+        governanceActionTxSignature = useDaoFallback
+          ? promptRequired('Freeze transaction signature (from DAO-approved freeze on Solana):')
+          : promptRequired('Freeze transaction signature executed by governance:')
+        if (useDaoFallback) {
+          proposalAddress = request?.councilWorkflow?.proposalAddress || `dao-fallback-${id}`
+          executionTxSignature = governanceActionTxSignature
+        }
+      } else if (useDaoFallback) {
+        proposalAddress = request?.councilWorkflow?.proposalAddress || `dao-fallback-${id}`
+        executionTxSignature = `dao-fallback-${Date.now()}`
       }
 
       let paymentTxSignature = ''
@@ -362,7 +403,12 @@ function App() {
         await fetchWhitelist()
         await fetchStats()
         if (walletAddress) fetchParcelsByOwner(walletAddress)
-        showNotification(status === 'approved' ? 'Request executed via DAO governance.' : 'Request rejected via DAO governance.', 'success')
+        showNotification(
+          status === 'approved'
+            ? (useDaoFallback ? 'Request executed by DAO authority wallet on Solana.' : 'Request executed via DAO governance.')
+            : (useDaoFallback ? 'Request rejected by DAO authority wallet.' : 'Request rejected via DAO governance.'),
+          'success'
+        )
       } else {
         const data = await res.json().catch(() => ({}))
         showNotification(data.error || 'Action failed', 'error')
@@ -381,19 +427,19 @@ function App() {
   const getCouncilWorkflowMeta = (item) => {
     const workflow = item?.councilWorkflow || {}
     const votes = Array.isArray(workflow.votes) ? workflow.votes : []
-    const requiredApprovals = Number(workflow.requiredApprovals) > 0 ? Number(workflow.requiredApprovals) : COUNCIL_WALLETS.length
+    const requiredApprovals = Number(workflow.requiredApprovals) > 0 ? Number(workflow.requiredApprovals) : (COUNCIL_WALLETS.length || 2)
     const approvalCount = Number(workflow.approvalCount) > 0
       ? Number(workflow.approvalCount)
       : votes.filter((v) => v?.vote === 'approved').length
     const proposalCreated = Boolean(workflow.proposalCreated)
     const readyForDaoAuthority = Boolean(workflow.readyForDaoAuthority) || (proposalCreated && approvalCount >= requiredApprovals)
-    const hasCurrentWalletApproved = Boolean(walletAddress && votes.some((v) => v?.walletAddress === walletAddress && v?.vote === 'approved'))
+    const hasCurrentWalletVoted = Boolean(walletAddress && votes.some((v) => v?.walletAddress === walletAddress))
     return {
       proposalCreated,
       requiredApprovals,
       approvalCount,
       readyForDaoAuthority,
-      hasCurrentWalletApproved
+      hasCurrentWalletVoted
     }
   }
 
@@ -910,6 +956,124 @@ function App() {
           </button>
         </div>
       )}
+
+      {selectedPublicParcel && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedPublicParcel(null)}
+        >
+          <div
+            className="premium-card rounded-2xl shadow-2xl border border-slate-200 p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-black text-slate-900 mb-4 flex items-center gap-2">
+              <Globe className="w-5 h-5 text-primary" /> Public record details
+            </h2>
+            <div className="space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                <div>
+                  <span className="text-slate-500">Parcel ID</span>
+                  <br />
+                  <span className="font-mono text-slate-800">#{selectedPublicParcel.tokenId}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Status</span>
+                  <br />
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">
+                    {selectedPublicParcel.status || 'registered'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Owner name</span>
+                  <br />
+                  <span className="font-medium text-slate-800">{selectedPublicParcel.ownerName}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Owner wallet</span>
+                  <br />
+                  <span className="font-mono text-slate-800 break-all">
+                    {truncateHash(selectedPublicParcel.ownerWallet)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500">District</span>
+                  <br />
+                  <span className="text-slate-800">
+                    {selectedPublicParcel.location?.district || '—'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Municipality</span>
+                  <br />
+                  <span className="text-slate-800">
+                    {selectedPublicParcel.location?.municipality || '—'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Ward / Tole</span>
+                  <br />
+                  <span className="text-slate-800">
+                    Ward {selectedPublicParcel.location?.ward ?? '—'},{' '}
+                    {selectedPublicParcel.location?.tole || '—'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Size</span>
+                  <br />
+                  <span className="text-slate-800">
+                    {formatSize(selectedPublicParcel.size)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Created at</span>
+                  <br />
+                  <span className="text-slate-800">
+                    {selectedPublicParcel.createdAt
+                      ? new Date(selectedPublicParcel.createdAt).toLocaleString()
+                      : '—'}
+                  </span>
+                </div>
+              </div>
+
+              {selectedPublicParcel.transactionHash && (
+                <div className="pt-2 border-t border-slate-100">
+                  <span className="text-slate-500">Solana transaction</span>
+                  <br />
+                  <a
+                    href={`https://explorer.solana.com/tx/${selectedPublicParcel.transactionHash}?cluster=devnet`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-blue-600 hover:underline inline-flex items-center gap-1 break-all"
+                  >
+                    {truncateHash(selectedPublicParcel.transactionHash)}{' '}
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              )}
+
+              {selectedPublicParcel.mintAddress && (
+                <div className="pt-2 border-t border-slate-100">
+                  <span className="text-slate-500">NFT mint address</span>
+                  <br />
+                  <span className="font-mono text-slate-800 break-all">
+                    {truncateHash(selectedPublicParcel.mintAddress)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedPublicParcel(null)}
+                className="px-4 py-2.5 border border-slate-300 text-slate-700 rounded-xl font-medium hover:bg-slate-50 transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {activeTab === 'landing' && <Landing />}
 
       {/* Single global navbar on all non-landing pages */}
@@ -1012,7 +1176,8 @@ function App() {
                     {parcels.map((parcel) => (
                       <div
                         key={parcel._id}
-                        className="premium-card rounded-2xl shadow-sm border border-slate-200 overflow-hidden card-hover animate-fadeIn"
+                        className="premium-card rounded-2xl shadow-sm border border-slate-200 overflow-hidden card-hover animate-fadeIn cursor-pointer"
+                        onClick={() => setSelectedPublicParcel(parcel)}
                       >
                         <div className="bg-slate-900 px-5 py-4">
                           <div className="flex justify-between items-center">
@@ -1270,6 +1435,11 @@ function App() {
                   <p className="text-slate-600 text-sm mb-3">
                     Authority-first mode: only passed Realms proposals can execute mint, transfer, freeze, or upgrades.
                   </p>
+                  {!feeConfig.governanceConfigured && (
+                    <div className="mb-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+                      Realms verification is not configured on backend. DAO Authority fallback mode is active: Wallet D signs and submits the Solana action transaction directly.
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div><span className="text-slate-500">Threshold</span><br /><span className="text-slate-800 font-semibold">{governanceConfig.votingThreshold}</span></div>
                     <div><span className="text-slate-500">Voting window</span><br /><span className="text-slate-800 font-semibold">{governanceConfig.votingWindowHours}h</span></div>
@@ -1448,7 +1618,7 @@ function App() {
                                       </button>
                                     )
                                   }
-                                  if (council.hasCurrentWalletApproved) {
+                                  if (council.hasCurrentWalletVoted) {
                                     return (
                                       <span className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold">
                                         Vote Recorded
@@ -1591,7 +1761,7 @@ function App() {
                                       </button>
                                     )
                                   }
-                                  if (council.hasCurrentWalletApproved) {
+                                  if (council.hasCurrentWalletVoted) {
                                     return (
                                       <span className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold">
                                         Vote Recorded
@@ -1731,7 +1901,7 @@ function App() {
                                       </button>
                                     )
                                   }
-                                  if (council.hasCurrentWalletApproved) {
+                                  if (council.hasCurrentWalletVoted) {
                                     return (
                                       <span className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold">
                                         Vote Recorded

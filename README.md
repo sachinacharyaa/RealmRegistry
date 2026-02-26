@@ -82,8 +82,15 @@ Optional:
 - `POST /api/council/proposals/:id/create`: council member creates proposal step.
 - `POST /api/council/votes/:id`: council member vote step (`approved`/`rejected`).
 - `POST /api/governance/execute/:id`: DAO-only execution path (requires proposal + execution proof).
+- `POST /api/solana/build-registration-mint-tx` (alias: `/api/solana/build-mint-tx`): builds an NFT mint tx for Wallet D to sign in-app.
 - `PUT /api/whitelist/:id`: disabled intentionally (returns 410).
 - `GET /api/governance/config`: returns DAO/governance configuration for UI.
+
+If `REALMS_*` is not configured, Wallet D fallback is allowed after `2/2` council approvals:
+
+1. Wallet D clicks approve.
+2. App builds mint tx on backend and opens Wallet D for signing.
+3. Signed tx is submitted to Solana and saved as execution proof.
 
 ## Run Locally
 

@@ -4,14 +4,76 @@
  */
 
 const SOLANA_RPC = process.env.SOLANA_RPC_URL || ''
+const SOLANA_RPC_FALLBACK_URLS = (process.env.SOLANA_RPC_FALLBACK_URLS || 'https://api.devnet.solana.com,https://api.devnet.solana.org,https://rpc.ankr.com/solana_devnet')
+  .split(',')
+  .map((u) => u.trim())
+  .filter(Boolean)
+const RPC_ENDPOINTS = Array.from(new Set([SOLANA_RPC, ...SOLANA_RPC_FALLBACK_URLS].filter(Boolean)))
 
 let connection = null
+let currentRpcIndex = 0
+
+function currentRpcUrl() {
+  return RPC_ENDPOINTS[currentRpcIndex] || ''
+}
+
+function useRpcAt(index) {
+  const { Connection } = require('@solana/web3.js')
+  currentRpcIndex = index
+  connection = new Connection(RPC_ENDPOINTS[currentRpcIndex])
+}
+
+function rotateRpc() {
+  if (RPC_ENDPOINTS.length <= 1) return false
+  const nextIndex = (currentRpcIndex + 1) % RPC_ENDPOINTS.length
+  useRpcAt(nextIndex)
+  return true
+}
+
+function isRpcTransientError(err) {
+  const msg = String(err?.message || '').toLowerCase()
+  return (
+    msg.includes('fetch failed') ||
+    msg.includes('failed to fetch') ||
+    msg.includes('timed out') ||
+    msg.includes('timeout') ||
+    msg.includes('429') ||
+    msg.includes('503') ||
+    msg.includes('econnreset') ||
+    msg.includes('enotfound') ||
+    msg.includes('network')
+  )
+}
+
+function normalizeRpcError(err) {
+  const msg = String(err?.message || '')
+  if (isRpcTransientError(err)) {
+    return new Error(`Solana RPC request failed on all endpoints. Checked: ${RPC_ENDPOINTS.join(', ')}`)
+  }
+  return new Error(msg || 'Solana RPC request failed')
+}
+
+async function withRpcRetry(fn) {
+  if (!connection || !RPC_ENDPOINTS.length) throw new Error('Solana RPC not configured')
+  let lastErr = null
+  for (let attempt = 0; attempt < RPC_ENDPOINTS.length; attempt += 1) {
+    try {
+      return await fn(connection)
+    } catch (err) {
+      lastErr = err
+      if (!isRpcTransientError(err) || attempt === RPC_ENDPOINTS.length - 1) {
+        throw normalizeRpcError(err)
+      }
+      rotateRpc()
+    }
+  }
+  throw normalizeRpcError(lastErr)
+}
 
 function init() {
-  if (!SOLANA_RPC) return false
+  if (!RPC_ENDPOINTS.length) return false
   try {
-    const { Connection } = require('@solana/web3.js')
-    connection = new Connection(SOLANA_RPC)
+    useRpcAt(0)
     return true
   } catch (e) {
     console.warn('Solana init skipped:', e.message)
@@ -64,11 +126,11 @@ function getProgramIdsFromTx(tx) {
 }
 
 async function getConfirmedTx(signature) {
-  if (!connection || !SOLANA_RPC) throw new Error('Solana RPC not configured')
-  const tx = await connection.getTransaction(signature, {
+  if (!connection || !RPC_ENDPOINTS.length) throw new Error('Solana RPC not configured')
+  const tx = await withRpcRetry((conn) => conn.getTransaction(signature, {
     commitment: 'confirmed',
     maxSupportedTransactionVersion: 0
-  })
+  }))
   if (!tx) return { ok: false, reason: 'transaction not found' }
   if (tx.meta?.err) return { ok: false, reason: 'transaction failed on-chain' }
   return { ok: true, tx }
@@ -113,7 +175,7 @@ async function verifyParcelAction({ signature, requiredAccounts = [] }) {
 
 /** Build unsigned SPL transfer transaction for client to sign. */
 async function buildNFTTransferTx(mintAddress, fromPubkey, toPubkey) {
-  if (!connection || !SOLANA_RPC) throw new Error('Solana RPC not configured')
+  if (!connection || !RPC_ENDPOINTS.length) throw new Error('Solana RPC not configured')
   const { Transaction, PublicKey } = require('@solana/web3.js')
   const spl = require('@solana/spl-token')
   const from = new PublicKey(fromPubkey)
@@ -133,16 +195,74 @@ async function buildNFTTransferTx(mintAddress, fromPubkey, toPubkey) {
     spl.createTransferInstruction(fromAta, toAta, from, 1)
   )
 
-  const { blockhash } = await connection.getLatestBlockhash()
+  const { blockhash } = await withRpcRetry((conn) => conn.getLatestBlockhash())
   tx.recentBlockhash = blockhash
   tx.feePayer = from
   const serialized = tx.serialize({ requireAllSignatures: false })
   return serialized.toString('base64')
 }
 
+/** Build unsigned registration mint transaction (NFT supply=1) for DAO authority wallet to sign. */
+async function buildRegistrationMintTx(fromPubkey, toPubkey) {
+  if (!connection || !RPC_ENDPOINTS.length) throw new Error('Solana RPC not configured')
+  const { Transaction, PublicKey, Keypair, SystemProgram } = require('@solana/web3.js')
+  const spl = require('@solana/spl-token')
+
+  let from
+  let to
+  try {
+    from = new PublicKey(String(fromPubkey).trim())
+    to = new PublicKey(String(toPubkey).trim())
+  } catch {
+    throw new Error('Invalid wallet address for mint transaction.')
+  }
+  const mint = Keypair.generate()
+  const rent = await withRpcRetry((conn) => spl.getMinimumBalanceForRentExemptMint(conn))
+  const toAta = await spl.getAssociatedTokenAddress(mint.publicKey, to)
+
+  const tx = new Transaction().add(
+    SystemProgram.createAccount({
+      fromPubkey: from,
+      newAccountPubkey: mint.publicKey,
+      space: spl.MINT_SIZE,
+      lamports: rent,
+      programId: spl.TOKEN_PROGRAM_ID
+    }),
+    spl.createInitializeMintInstruction(
+      mint.publicKey,
+      0,
+      from,
+      from
+    ),
+    spl.createAssociatedTokenAccountInstruction(
+      from,
+      toAta,
+      to,
+      mint.publicKey
+    ),
+    spl.createMintToInstruction(
+      mint.publicKey,
+      toAta,
+      from,
+      1
+    )
+  )
+
+  const { blockhash } = await withRpcRetry((conn) => conn.getLatestBlockhash())
+  tx.recentBlockhash = blockhash
+  tx.feePayer = from
+  tx.partialSign(mint)
+
+  const serialized = tx.serialize({ requireAllSignatures: false })
+  return {
+    transaction: serialized.toString('base64'),
+    mintAddress: mint.publicKey.toBase58()
+  }
+}
+
 /** Build registration transaction: fee transfer + memo record. */
 async function buildRegistrationTx(fromPubkey, toPubkey, lamports, payload) {
-  if (!connection || !SOLANA_RPC) throw new Error('Solana RPC not configured')
+  if (!connection || !RPC_ENDPOINTS.length) throw new Error('Solana RPC not configured')
   const { Transaction, SystemProgram, PublicKey, TransactionInstruction } = require('@solana/web3.js')
   const from = new PublicKey(fromPubkey)
   const to = new PublicKey(toPubkey)
@@ -157,7 +277,7 @@ async function buildRegistrationTx(fromPubkey, toPubkey, lamports, payload) {
     data: Buffer.from(text, 'utf8')
   }))
 
-  const { blockhash } = await connection.getLatestBlockhash()
+  const { blockhash } = await withRpcRetry((conn) => conn.getLatestBlockhash())
   tx.recentBlockhash = blockhash
   tx.feePayer = from
   const serialized = tx.serialize({ requireAllSignatures: false })
@@ -166,14 +286,14 @@ async function buildRegistrationTx(fromPubkey, toPubkey, lamports, payload) {
 
 /** Build unsigned fee-transfer transaction for client to sign. */
 async function buildFeeTransferTx(fromPubkey, toPubkey, lamports) {
-  if (!connection || !SOLANA_RPC) throw new Error('Solana RPC not configured')
+  if (!connection || !RPC_ENDPOINTS.length) throw new Error('Solana RPC not configured')
   const { Transaction, SystemProgram, PublicKey } = require('@solana/web3.js')
   const from = typeof fromPubkey === 'string' ? new PublicKey(fromPubkey) : fromPubkey
   const to = typeof toPubkey === 'string' ? new PublicKey(toPubkey) : toPubkey
   const tx = new Transaction().add(
     SystemProgram.transfer({ fromPubkey: from, toPubkey: to, lamports: Number(lamports) })
   )
-  const { blockhash } = await connection.getLatestBlockhash()
+  const { blockhash } = await withRpcRetry((conn) => conn.getLatestBlockhash())
   tx.recentBlockhash = blockhash
   tx.feePayer = from
   const serialized = tx.serialize({ requireAllSignatures: false })
@@ -182,10 +302,10 @@ async function buildFeeTransferTx(fromPubkey, toPubkey, lamports) {
 
 /** Submit a signed transaction (base64) and return signature. */
 async function submitSignedTx(signedTxBase64) {
-  if (!connection || !SOLANA_RPC) throw new Error('Solana RPC not configured')
+  if (!connection || !RPC_ENDPOINTS.length) throw new Error('Solana RPC not configured')
   const buffer = Buffer.from(signedTxBase64, 'base64')
-  const sig = await connection.sendRawTransaction(buffer, { skipPreflight: false })
-  await connection.confirmTransaction(sig)
+  const sig = await withRpcRetry((conn) => conn.sendRawTransaction(buffer, { skipPreflight: false }))
+  await withRpcRetry((conn) => conn.confirmTransaction(sig))
   return sig
 }
 
@@ -193,6 +313,7 @@ module.exports = {
   buildFeeTransferTx,
   buildRegistrationTx,
   buildNFTTransferTx,
+  buildRegistrationMintTx,
   submitSignedTx,
   verifyGovernanceExecution,
   verifyParcelAction,

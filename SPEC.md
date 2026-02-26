@@ -54,17 +54,21 @@ Officers can:
 Transfer example:
 
 1. Citizen submits transfer request.
-2. Any officer creates proposal in Realms: `Approve transfer of Parcel #123 from A -> B`.
-3. Officer 1 votes `Yes`.
-4. Officer 2 votes `Yes`.
-5. Threshold `2/2` is met and proposal passes.
-6. DAO Authority executes the passed proposal path.
+2. Initial council action is only `Create Proposal`.
+3. After proposal creation, both council members can vote.
+4. Officer 1 votes `Yes`.
+5. Officer 2 votes `Yes`.
+6. Threshold `2/2` is met and proposal passes.
+7. DAO Authority executes the passed proposal path.
 
 ## Backend Rules
 
 - `PUT /api/whitelist/:id` is disabled.
 - `POST /api/governance/execute/:id` is the only approval/rejection path.
 - `POST /api/freeze-requests` creates pending freeze requests for DAO workflow.
+- `POST /api/council/proposals/:id/create` creates council proposal state for a request.
+- `POST /api/council/votes/:id` records council votes.
+- `POST /api/solana/build-registration-mint-tx` (alias `/api/solana/build-mint-tx`) builds unsigned NFT mint tx for Wallet D.
 - Backend verifies:
   - proposal execution transaction exists and is confirmed
   - transaction includes configured `realm`, `governance`, `governance signer PDA`, `proposal`
@@ -99,6 +103,10 @@ Transfer example:
 - No hardcoded admin wallet allowlist for approvals.
 - Council panel is shown to configured council wallets for workflow UX.
 - Wallet B and C UI is officer-flow only (review/propose/vote).
+- At first only `Create Proposal` is shown for council member flow.
+- Voting action appears only after proposal is created.
+- DAO Authority execution unlocks only after `2/2` council approvals.
+- If `REALMS_*` is missing, DAO Authority fallback mode can execute after `2/2` by signing Solana action tx in wallet.
 - Wallet D UI is DAO authority execution flow only.
 - Council execution flow prompts for:
   - Realms proposal address
