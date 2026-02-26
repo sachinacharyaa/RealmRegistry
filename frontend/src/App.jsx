@@ -1416,10 +1416,20 @@ function App() {
 
                 <div className="premium-card rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-8">
                   <div className="bg-slate-900 px-6 py-5 border-b border-white/10">
-                    <h2 className="text-lg font-black text-white flex items-center gap-2">
-                      <Shield className="w-5 h-5 text-indigo-300" /> Freeze proposals
-                    </h2>
-                    <p className="text-slate-400 text-sm mt-1">Freeze can only execute through a passed Realms proposal.</p>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h2 className="text-lg font-black text-white flex items-center gap-2">
+                          <Shield className="w-5 h-5 text-indigo-300" /> Freeze proposals
+                        </h2>
+                        <p className="text-slate-400 text-sm mt-1">Freeze can only execute through a passed Realms proposal.</p>
+                      </div>
+                      <button
+                        onClick={handleCreateFreezeRequest}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition text-sm"
+                      >
+                        Create Freeze Request
+                      </button>
+                    </div>
                   </div>
                   {freezeRequests.length === 0 ? (
                     <div className="p-8 text-center text-slate-500">No pending freeze requests.</div>
