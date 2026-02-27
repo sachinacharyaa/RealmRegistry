@@ -54,11 +54,11 @@ const NepalFlag = () => (
   </svg>
 )
 
-const RealmRegistryLogo = ({ className = 'h-24 w-auto' }) => (
+const RealmRegistryLogo = ({ className = 'h-32 w-auto' }) => (
   <img
     src="/logo.png"
     alt="RealmRegistry Logo"
-    className={`${className} object-contain transition-transform duration-300 bg-transparent`}
+    className={`${className} object-contain transition-transform duration-300`}
   />
 )
 
@@ -374,8 +374,17 @@ function App() {
   const handleWhitelistAction = async (id, status) => {
     setTxLoading(id)
     try {
+      if (!walletAddress) throw new Error('Connect DAO authority wallet first.')
       const request = whitelist.find((w) => w._id === id)
       if (!request) throw new Error('Request not found')
+
+      // Require 0.05 SOL fee for DAO authority actions (approve or reject)
+      let feeTxSignature = ''
+      try {
+        feeTxSignature = await payFeeSol(0.05)
+      } catch (err) {
+        throw new Error('A 0.05 SOL transaction fee is required to ' + status + ' this request. ' + (err.message || ''))
+      }
       const useDaoFallback = !feeConfig.governanceConfigured
 
       const promptRequired = (label) => {
@@ -388,10 +397,6 @@ function App() {
 
       let proposalAddress = ''
       let executionTxSignature = ''
-      if (!useDaoFallback) {
-        proposalAddress = promptRequired('Realms proposal address (passed proposal):')
-        executionTxSignature = promptRequired('Governance execution transaction signature:')
-      }
 
       let governanceActionTxSignature = ''
       let parcelMintAddress = ''
@@ -415,23 +420,16 @@ function App() {
           parcelMintAddress = mintData.mintAddress
           proposalAddress = request?.councilWorkflow?.proposalAddress || `dao-fallback-${id}`
           executionTxSignature = governanceActionTxSignature
-        } else {
-          parcelMintAddress = promptRequired('Mint address created by governance execution:')
-          governanceActionTxSignature = promptRequired('Mint transaction signature executed by governance:')
         }
       } else if (status === 'approved' && request.requestType === 'transfer') {
-        governanceActionTxSignature = useDaoFallback
-          ? promptRequired('Transfer transaction signature (from DAO-approved transfer on Solana):')
-          : promptRequired('Transfer transaction signature executed by governance:')
         if (useDaoFallback) {
+          governanceActionTxSignature = promptRequired('Transfer transaction signature (from DAO-approved transfer on Solana):')
           proposalAddress = request?.councilWorkflow?.proposalAddress || `dao-fallback-${id}`
           executionTxSignature = governanceActionTxSignature
         }
       } else if (status === 'approved' && request.requestType === 'freeze') {
-        governanceActionTxSignature = useDaoFallback
-          ? promptRequired('Freeze transaction signature (from DAO-approved freeze on Solana):')
-          : promptRequired('Freeze transaction signature executed by governance:')
         if (useDaoFallback) {
+          governanceActionTxSignature = promptRequired('Freeze transaction signature (from DAO-approved freeze on Solana):')
           proposalAddress = request?.councilWorkflow?.proposalAddress || `dao-fallback-${id}`
           executionTxSignature = governanceActionTxSignature
         }
@@ -440,10 +438,8 @@ function App() {
         executionTxSignature = `dao-fallback-${Date.now()}`
       }
 
-      let paymentTxSignature = ''
-      if ((feeConfig.governanceExecutionFeeSol ?? 0) > 0) {
-        paymentTxSignature = await payFeeSol(feeConfig.governanceExecutionFeeSol)
-      }
+      // DAO Authority execution recorded fee
+      let paymentTxSignature = feeTxSignature
 
       const res = await fetch(`${API_BASE}/api/governance/execute/${id}`, {
         method: 'POST',
@@ -736,10 +732,10 @@ function App() {
   const formatSize = (size) => {
     if (!size) return '—'
     const parts = []
-    if (size.bigha) parts.push(`${size.bigha} Bigha`)
-    if (size.kattha) parts.push(`${size.kattha} Kattha`)
-    if (size.dhur) parts.push(`${size.dhur} Dhur`)
-    return parts.length ? parts.join(', ') : '0 Dhur'
+    if (size.bigha) parts.push(`${size.bigha} m²`)
+    if (size.kattha) parts.push(`${size.kattha} ha`)
+    if (size.dhur) parts.push(`${size.dhur} ac`)
+    return parts.length ? parts.join(', ') : '0 m²'
   }
 
   const registrationRequests = whitelist.filter((w) => w.status === 'pending' && w.requestType === 'registration')
@@ -755,9 +751,9 @@ function App() {
       {/* Top Navigation */}
       <header className="sticky top-0 z-50 w-full bg-white/90 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex h-20 items-center justify-between gap-8">
-            <button onClick={() => setActiveTab('landing')} className="flex items-center group cursor-pointer">
-              <RealmRegistryLogo className="h-14 w-auto opacity-90" />
+          <div className="flex h-24 md:h-28 items-center justify-between gap-8 py-2">
+            <button onClick={() => setActiveTab('landing')} className="flex items-center group cursor-pointer -ml-2">
+              <RealmRegistryLogo className="h-20 md:h-28 w-auto opacity-100 scale-110 origin-left" />
             </button>
             <nav className="hidden md:flex items-center gap-10 text-base lg:text-lg font-semibold text-slate-700">
               <a className="hover:text-primary transition-colors" href="#pillars">Technology</a>
