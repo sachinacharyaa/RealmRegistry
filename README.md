@@ -14,13 +14,13 @@ RealmRegistry is a municipal land registry where authority is controlled by a **
 
 ## If you want to try on your Localhost, use your Assigned Wallets
 
-- Wallet A (user (Citizens)): `here`
+- Wallet A (user (Citizens)): `wallet address here`
 
-- Wallet B (Government Officers-Council Members 1): `here`
+- Wallet B (Government Officers-Council Members 1): `wallet address here`
 
-- Wallet C (Government Officers-Council Members 2): `here`
+- Wallet C (Government Officers-Council Members 2): `wallet address here`
 
-- Wallet D (The DAO, Real Authority): `here`
+- Wallet D (The DAO, Real Authority): `wallet address here`
 
 And Give command to coding agent, assign roles and permissions to each wallet.
 
