@@ -749,19 +749,19 @@ function App() {
   const Landing = () => (
     <div className="min-h-screen">
       {/* Top Navigation */}
-      <header className="sticky top-0 z-50 w-full bg-white/90 backdrop-blur-md">
+      <header className="sticky top-0 z-50 w-full bg-black/80 backdrop-blur-md border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-24 md:h-28 items-center justify-between gap-8 py-2">
             <button onClick={() => setActiveTab('landing')} className="flex items-center group cursor-pointer -ml-2">
               <RealmRegistryLogo className="h-28 md:h-28 w-auto opacity-100 scale-110 origin-left" />
             </button>
-            <nav className="hidden md:flex items-center gap-10 text-base lg:text-lg font-semibold text-slate-700">
-              <a className="hover:text-primary transition-colors" href="#pillars">Technology</a>
-              <a className="hover:text-primary transition-colors" href="#how-it-works">How it Works</a>
-              <button onClick={() => setActiveTab('explorer')} className="hover:text-primary transition-colors">Explorer</button>
+            <nav className="hidden md:flex items-center gap-10 text-base lg:text-lg font-semibold text-slate-300">
+              <a className="hover:text-secondary transition-colors" href="#pillars">Technology</a>
+              <a className="hover:text-secondary transition-colors" href="#how-it-works">How it Works</a>
+              <button onClick={() => setActiveTab('explorer')} className="hover:text-secondary transition-colors">Explorer</button>
             </nav>
             <div className="flex items-center gap-4">
-              <WalletMultiButton className="!bg-primary !text-white !px-6 !py-3 !rounded-xl !text-sm lg:!text-base !font-bold hover:!bg-primary/90 !transition-all !shadow-lg !shadow-primary/20" />
+              <WalletMultiButton className="!bg-white/5 !text-white !border !border-white/10 !rounded-xl !px-6 !py-3 !text-sm lg:!text-base !font-bold hover:!bg-white/10 !transition-all" />
             </div>
           </div>
         </div>
@@ -1063,75 +1063,75 @@ function App() {
 
       {selectedPublicParcel && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={() => setSelectedPublicParcel(null)}
         >
           <div
-            className="premium-card rounded-2xl shadow-2xl border border-slate-200 p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            className="premium-card rounded-2xl shadow-2xl border border-white/10 p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto bg-black/90"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-xl font-black text-slate-900 mb-4 flex items-center gap-2">
+            <h2 className="text-xl font-black text-white mb-4 flex items-center gap-2">
               <Globe className="w-5 h-5 text-primary" /> Public record details
             </h2>
             <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-x-6 gap-y-2">
                 <div>
-                  <span className="text-slate-500">Parcel ID</span>
+                  <span className="text-slate-400">Parcel ID</span>
                   <br />
-                  <span className="font-mono text-slate-800">#{selectedPublicParcel.tokenId}</span>
+                  <span className="font-mono text-white">#{selectedPublicParcel.tokenId}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500">Status</span>
+                  <span className="text-slate-400">Status</span>
                   <br />
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-900/40 text-emerald-400 border border-emerald-500/20">
                     {selectedPublicParcel.status || 'registered'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-500">Owner name</span>
+                  <span className="text-slate-400">Owner name</span>
                   <br />
-                  <span className="font-medium text-slate-800">{selectedPublicParcel.ownerName}</span>
+                  <span className="font-medium text-white">{selectedPublicParcel.ownerName}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500">Owner wallet</span>
+                  <span className="text-slate-400">Owner wallet</span>
                   <br />
-                  <span className="font-mono text-slate-800 break-all">
+                  <span className="font-mono text-white break-all">
                     {truncateHash(selectedPublicParcel.ownerWallet)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-500">Country</span>
+                  <span className="text-slate-400">Country</span>
                   <br />
-                  <span className="text-slate-800">
+                  <span className="text-white">
                     {selectedPublicParcel.location?.district || '—'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-500">City</span>
+                  <span className="text-slate-400">City</span>
                   <br />
-                  <span className="text-slate-800">
+                  <span className="text-white">
                     {selectedPublicParcel.location?.municipality || '—'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-500">Ward / Locality</span>
+                  <span className="text-slate-400">Ward / Locality</span>
                   <br />
-                  <span className="text-slate-800">
+                  <span className="text-white">
                     Ward {selectedPublicParcel.location?.ward ?? '—'},{' '}
                     {selectedPublicParcel.location?.tole || '—'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-500">Size</span>
+                  <span className="text-slate-400">Size</span>
                   <br />
-                  <span className="text-slate-800">
+                  <span className="text-white">
                     {formatSize(selectedPublicParcel.size)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-500">Created at</span>
+                  <span className="text-slate-400">Created at</span>
                   <br />
-                  <span className="text-slate-800">
+                  <span className="text-white">
                     {selectedPublicParcel.createdAt
                       ? new Date(selectedPublicParcel.createdAt).toLocaleString()
                       : '—'}
@@ -1140,14 +1140,14 @@ function App() {
               </div>
 
               {selectedPublicParcel.transactionHash && (
-                <div className="pt-2 border-t border-slate-100">
-                  <span className="text-slate-500">Solana transaction</span>
+                <div className="pt-4 mt-4 border-t border-white/10">
+                  <span className="text-slate-400">Solana transaction</span>
                   <br />
                   <a
                     href={`https://explorer.solana.com/tx/${selectedPublicParcel.transactionHash}?cluster=devnet`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-mono text-blue-600 hover:underline inline-flex items-center gap-1 break-all"
+                    className="font-mono text-primary hover:text-primary-light hover:underline inline-flex items-center gap-1 break-all transition-colors"
                   >
                     {truncateHash(selectedPublicParcel.transactionHash)}{' '}
                     <ExternalLink className="w-3.5 h-3.5" />
@@ -1156,21 +1156,21 @@ function App() {
               )}
 
               {selectedPublicParcel.mintAddress && (
-                <div className="pt-2 border-t border-slate-100">
-                  <span className="text-slate-500">NFT mint address</span>
+                <div className="pt-4 mt-4 border-t border-white/10">
+                  <span className="text-slate-400">NFT mint address</span>
                   <br />
-                  <span className="font-mono text-slate-800 break-all">
+                  <span className="font-mono text-white break-all">
                     {truncateHash(selectedPublicParcel.mintAddress)}
                   </span>
                 </div>
               )}
             </div>
 
-            <div className="mt-6 flex justify-end">
+            <div className="mt-8 flex justify-end">
               <button
                 type="button"
                 onClick={() => setSelectedPublicParcel(null)}
-                className="px-4 py-2.5 border border-slate-300 text-slate-700 rounded-xl font-medium hover:bg-slate-50 transition"
+                className="px-6 py-2.5 border border-white/20 text-white rounded-xl font-medium hover:bg-white/10 transition"
               >
                 Close
               </button>
@@ -1190,7 +1190,7 @@ function App() {
                   onClick={() => setActiveTab('landing')}
                   className="flex items-center group cursor-pointer shrink-0"
                 >
-                  <RealmRegistryLogo className="h-16 md:h-20 w-auto opacity-100 drop-shadow-[0_0_15px_rgba(153,69,255,0.5)]" />
+                  <RealmRegistryLogo className="h-16 md:h-20 w-auto opacity-100" />
                 </button>
                 <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-4">
                   <button
@@ -1626,11 +1626,11 @@ function App() {
                   {registrationRequests.length === 0 ? (
                     <div className="p-8 text-center text-slate-500">No pending registration requests.</div>
                   ) : (
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-white/10">
                       {registrationRequests.map((item) => (
                         <div key={item._id} className="overflow-hidden">
                           <div
-                            className="p-6 flex flex-wrap items-center justify-between gap-4 hover:bg-slate-50 transition cursor-pointer"
+                            className="p-6 flex flex-wrap items-center justify-between gap-4 hover:bg-white/5 transition cursor-pointer"
                             onClick={() => setExpandedRequestId(expandedRequestId === item._id ? null : item._id)}
                           >
                             <div className="flex items-center gap-3">
@@ -1648,7 +1648,7 @@ function App() {
                                     </p>
                                   )
                                 })()}
-                                <h3 className="font-semibold text-slate-800">{item.ownerName}</h3>
+                                <h3 className="font-semibold text-white">{item.ownerName}</h3>
                                 <p className="text-sm text-slate-500 font-mono">{truncateHash(item.walletAddress)}</p>
                                 {item.location && (
                                   <p className="text-sm text-slate-500">
@@ -1667,7 +1667,7 @@ function App() {
                                   const council = getCouncilWorkflowMeta(item)
                                   if (!council.readyForDaoAuthority) {
                                     return (
-                                      <span className="px-4 py-2 bg-amber-100 text-amber-800 rounded-xl text-sm font-semibold">
+                                      <span className="px-4 py-2 bg-secondary/10 text-secondary rounded-xl text-sm font-semibold border border-secondary/20">
                                         Waiting council approvals ({council.approvalCount}/{council.requiredApprovals})
                                       </span>
                                     )
@@ -1716,7 +1716,7 @@ function App() {
                                             setExpandedRequestId(item._id)
                                             setProposalLinkId(item._id)
                                           }}
-                                          className="flex items-center gap-1 px-4 py-2 border border-amber-300 text-amber-900 rounded-xl font-medium hover:bg-amber-50 transition text-sm"
+                                          className="px-4 py-2 border border-white/20 text-slate-300 rounded-xl font-medium hover:bg-white/5 transition text-sm"
                                         >
                                           Link proposal
                                         </button>
@@ -1725,7 +1725,7 @@ function App() {
                                   }
                                   if (council.hasCurrentWalletVoted) {
                                     return (
-                                      <span className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold">
+                                      <span className="px-4 py-2 bg-white/5 text-slate-300 rounded-xl text-sm font-semibold border border-white/10">
                                         Vote Recorded
                                       </span>
                                     )
@@ -1747,16 +1747,16 @@ function App() {
                           </div>
                           {expandedRequestId === item._id && (
                             <div className="px-6 pb-6 pt-0 animate-fadeIn">
-                              <div className="rounded-xl bg-slate-50 border border-slate-100 p-5 text-sm space-y-3">
+                              <div className="rounded-xl bg-black/40 border border-white/10 p-5 text-sm space-y-3">
                                 <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-                                  <div><span className="text-slate-500">Owner name</span><br /><span className="font-medium text-slate-800">{item.ownerName}</span></div>
-                                  <div><span className="text-slate-500">Wallet</span><br /><span className="font-mono text-slate-800 break-all">{item.walletAddress}</span></div>
-                                  <div><span className="text-slate-500">Country</span><br /><span className="text-slate-800">{item.location?.district}</span></div>
-                                  <div><span className="text-slate-500">City</span><br /><span className="text-slate-800">{item.location?.municipality}</span></div>
-                                  <div><span className="text-slate-500">Ward</span><br /><span className="text-slate-800">{item.location?.ward}</span></div>
-                                  <div><span className="text-slate-500">Locality</span><br /><span className="text-slate-800">{item.location?.tole}</span></div>
-                                  <div><span className="text-slate-500">Land area</span><br /><span className="text-slate-800">{formatSize(item.size)}</span></div>
-                                  <div><span className="text-slate-500">Submitted</span><br /><span className="text-slate-800">{new Date(item.createdAt).toLocaleString()}</span></div>
+                                  <div><span className="text-slate-500">Owner name</span><br /><span className="font-medium text-white">{item.ownerName}</span></div>
+                                  <div><span className="text-slate-500">Wallet</span><br /><span className="font-mono text-white break-all">{item.walletAddress}</span></div>
+                                  <div><span className="text-slate-500">Country</span><br /><span className="text-white">{item.location?.district}</span></div>
+                                  <div><span className="text-slate-500">City</span><br /><span className="text-white">{item.location?.municipality}</span></div>
+                                  <div><span className="text-slate-500">Ward</span><br /><span className="text-white">{item.location?.ward}</span></div>
+                                  <div><span className="text-slate-500">Locality</span><br /><span className="text-white">{item.location?.tole}</span></div>
+                                  <div><span className="text-slate-500">Land area</span><br /><span className="text-white">{formatSize(item.size)}</span></div>
+                                  <div><span className="text-slate-500">Submitted</span><br /><span className="text-white">{new Date(item.createdAt).toLocaleString()}</span></div>
                                 </div>
                                 {/* Council proposal link section removed - using built-in governance */}
                               </div>
@@ -1782,11 +1782,11 @@ function App() {
                   {transferRequests.length === 0 ? (
                     <div className="p-8 text-center text-slate-500">No pending transfer requests.</div>
                   ) : (
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-white/10">
                       {transferRequests.map((item) => (
                         <div key={item._id} className="overflow-hidden">
                           <div
-                            className="p-6 flex flex-wrap items-center justify-between gap-4 hover:bg-slate-50 transition cursor-pointer"
+                            className="p-6 flex flex-wrap items-center justify-between gap-4 hover:bg-white/5 transition cursor-pointer"
                             onClick={() => setExpandedRequestId(expandedRequestId === item._id ? null : item._id)}
                           >
                             <div className="flex items-center gap-3">
@@ -1804,7 +1804,7 @@ function App() {
                                     </p>
                                   )
                                 })()}
-                                <h3 className="font-semibold text-slate-800">{item.ownerName || 'Transfer'}</h3>
+                                <h3 className="font-semibold text-white">{item.ownerName || 'Transfer'}</h3>
                                 <p className="text-sm text-slate-500 font-mono">From: {truncateHash(item.walletAddress)}</p>
                                 {item.toName && (
                                   <p className="text-sm text-slate-500">
@@ -1823,7 +1823,7 @@ function App() {
                                   const council = getCouncilWorkflowMeta(item)
                                   if (!council.readyForDaoAuthority) {
                                     return (
-                                      <span className="px-4 py-2 bg-amber-100 text-amber-800 rounded-xl text-sm font-semibold">
+                                      <span className="px-4 py-2 bg-secondary/10 text-secondary rounded-xl text-sm font-semibold border border-secondary/20">
                                         Waiting council approvals ({council.approvalCount}/{council.requiredApprovals})
                                       </span>
                                     )
@@ -1872,7 +1872,7 @@ function App() {
                                             setExpandedRequestId(item._id)
                                             setProposalLinkId(item._id)
                                           }}
-                                          className="flex items-center gap-1 px-4 py-2 border border-amber-300 text-amber-900 rounded-xl font-medium hover:bg-amber-50 transition text-sm"
+                                          className="px-4 py-2 border border-white/20 text-slate-300 rounded-xl font-medium hover:bg-white/5 transition text-sm"
                                         >
                                           Link proposal
                                         </button>
@@ -1881,7 +1881,7 @@ function App() {
                                   }
                                   if (council.hasCurrentWalletVoted) {
                                     return (
-                                      <span className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold">
+                                      <span className="px-4 py-2 bg-white/5 text-slate-300 rounded-xl text-sm font-semibold border border-white/10">
                                         Vote Recorded
                                       </span>
                                     )
@@ -1903,14 +1903,14 @@ function App() {
                           </div>
                           {expandedRequestId === item._id && (
                             <div className="px-6 pb-6 pt-0 animate-fadeIn">
-                              <div className="rounded-xl bg-slate-50 border border-slate-100 p-5 text-sm space-y-3">
+                              <div className="rounded-xl bg-black/40 border border-white/10 p-5 text-sm space-y-3">
                                 <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-                                  <div><span className="text-slate-500">From (owner)</span><br /><span className="font-medium text-slate-800">{item.ownerName}</span></div>
-                                  <div><span className="text-slate-500">From wallet</span><br /><span className="font-mono text-slate-800 break-all">{item.walletAddress}</span></div>
-                                  <div><span className="text-slate-500">To (recipient)</span><br /><span className="text-slate-800">{item.toName}</span></div>
-                                  <div><span className="text-slate-500">To wallet</span><br /><span className="font-mono text-slate-800 break-all">{item.toWallet}</span></div>
-                                  <div><span className="text-slate-500">Parcel ID</span><br /><span className="font-mono text-slate-800">{item.parcelId}</span></div>
-                                  <div><span className="text-slate-500">Submitted</span><br /><span className="text-slate-800">{new Date(item.createdAt).toLocaleString()}</span></div>
+                                  <div><span className="text-slate-500">From (owner)</span><br /><span className="font-medium text-white">{item.ownerName}</span></div>
+                                  <div><span className="text-slate-500">From wallet</span><br /><span className="font-mono text-white break-all">{item.walletAddress}</span></div>
+                                  <div><span className="text-slate-500">To (recipient)</span><br /><span className="text-white">{item.toName}</span></div>
+                                  <div><span className="text-slate-500">To wallet</span><br /><span className="font-mono text-white break-all">{item.toWallet}</span></div>
+                                  <div><span className="text-slate-500">Parcel ID</span><br /><span className="font-mono text-white">{item.parcelId}</span></div>
+                                  <div><span className="text-slate-500">Submitted</span><br /><span className="text-white">{new Date(item.createdAt).toLocaleString()}</span></div>
                                   {item.paymentTxSignature && (
                                     <div className="col-span-2">
                                       <span className="text-slate-500">SOL Fee Signature (Proof)</span><br />
@@ -1962,12 +1962,12 @@ function App() {
                   {freezeRequests.length === 0 ? (
                     <div className="p-8 text-center text-slate-500">No pending freeze requests.</div>
                   ) : (
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-white/10">
                       {freezeRequests.map((item) => (
                         <div key={item._id} className="overflow-hidden">
-                          <div className="p-6 flex flex-wrap items-center justify-between gap-4 hover:bg-slate-50 transition cursor-pointer" onClick={() => setExpandedRequestId(expandedRequestId === item._id ? null : item._id)}>
+                          <div className="p-6 flex flex-wrap items-center justify-between gap-4 hover:bg-white/5 transition cursor-pointer" onClick={() => setExpandedRequestId(expandedRequestId === item._id ? null : item._id)}>
                             <div>
-                              <h3 className="font-semibold text-slate-800">Parcel Freeze</h3>
+                              <h3 className="font-semibold text-white">Parcel Freeze</h3>
                               <p className="text-sm text-slate-500 font-mono">Parcel: {item.parcelId}</p>
                               <p className="text-sm text-slate-500">{item.freezeReason || 'Governance review requested'}</p>
                               {(() => {
@@ -1985,7 +1985,7 @@ function App() {
                                   const council = getCouncilWorkflowMeta(item)
                                   if (!council.readyForDaoAuthority) {
                                     return (
-                                      <span className="px-4 py-2 bg-amber-100 text-amber-800 rounded-xl text-sm font-semibold">
+                                      <span className="px-4 py-2 bg-secondary/10 text-secondary rounded-xl text-sm font-semibold border border-secondary/20">
                                         Waiting council approvals ({council.approvalCount}/{council.requiredApprovals})
                                       </span>
                                     )
