@@ -1373,10 +1373,10 @@ function App() {
                           {myRequests.map((r) => (
                             <div
                               key={r._id}
-                              className="rounded-xl border border-slate-200 overflow-hidden"
+                              className="rounded-xl border border-slate-800 bg-slate-900/70 overflow-hidden"
                             >
                               <div
-                                className="flex items-center justify-between p-4 bg-slate-50/50 hover:bg-slate-100/50 transition cursor-pointer"
+                                className="flex items-center justify-between p-4 bg-slate-900/70 hover:bg-slate-800 transition cursor-pointer"
                                 onClick={() => setExpandedRequestId(expandedRequestId === r._id ? null : r._id)}
                               >
                                 <div className="flex items-center gap-3">
@@ -1386,7 +1386,7 @@ function App() {
                                     <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
                                   )}
                                   <div>
-                                    <span className="font-medium text-slate-800">
+                                    <span className="font-medium text-slate-100">
                                       {r.requestType === 'registration' ? 'Registration' : r.requestType === 'freeze' ? 'Freeze' : 'Transfer'}
                                     </span>
                                     <span
@@ -1396,7 +1396,7 @@ function App() {
                                     </span>
                                   </div>
                                 </div>
-                                <span className="text-sm text-slate-500">{new Date(r.createdAt).toLocaleDateString()}</span>
+                                <span className="text-sm text-slate-400">{new Date(r.createdAt).toLocaleDateString()}</span>
                               </div>
                               {expandedRequestId === r._id && (
                                 <div className="px-4 pb-4 pt-2 border-t border-slate-800 bg-slate-900/80">
