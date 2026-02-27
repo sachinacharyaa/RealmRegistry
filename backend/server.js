@@ -8,8 +8,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Fee config: citizen pays when submitting; DAO execution can optionally include a governance fee.
+// Fee config: citizen pays when submitting; council actions and DAO execution can optionally include governance fees.
 const FEE_CITIZEN_SOL = parseFloat(process.env.FEE_CITIZEN_SOL || '0');
+const FEE_COUNCIL_ACTION_SOL = parseFloat(process.env.FEE_COUNCIL_ACTION_SOL || '0');
 const FEE_GOVERNANCE_EXECUTION_SOL = parseFloat(process.env.FEE_GOVERNANCE_EXECUTION_SOL || process.env.FEE_ADMIN_SOL || '0');
 const ENABLE_DEMO_SEED = process.env.ENABLE_DEMO_SEED === 'true';
 const REALMS_REALM_PUBKEY = process.env.REALMS_REALM_PUBKEY || '';
@@ -32,33 +33,33 @@ const ASSIGNED_WALLETS = [
   {
     key: 'A',
     label: 'Wallet A - Citizen',
-    name: '',
+    name: 'Sachin Acharya',
     role: 'citizen',
     address: ASSIGNED_WALLET_A
   },
   {
     key: 'B',
     label: 'Wallet B - Council Member 1',
-    name: '',
+    name: 'Hari Prasad Shah',
     role: 'council_member',
     address: ASSIGNED_WALLET_B
   },
   {
     key: 'C',
     label: 'Wallet C - Council Member 2',
-    name: '',
+    name: 'Ram Shakya',
     role: 'council_member',
     address: ASSIGNED_WALLET_C
   },
   {
     key: 'D',
     label: 'Wallet D - DAO Authority',
-    name: '',
+    name: 'Gagan Sher Shah',
     role: 'dao_authority',
     address: ASSIGNED_WALLET_D
   }
 ];
-const GOVERNANCE_DAO_NAME = process.env.GOVERNANCE_DAO_NAME || 'Land Authority DAO';
+const GOVERNANCE_DAO_NAME = process.env.GOVERNANCE_DAO_NAME || 'Nepal Land Authority DAO';
 const GOVERNANCE_MODEL = process.env.GOVERNANCE_MODEL || 'council';
 const GOVERNANCE_COUNCIL_MEMBERS = process.env.GOVERNANCE_COUNCIL_MEMBERS || '2';
 const GOVERNANCE_VOTING_THRESHOLD = process.env.GOVERNANCE_VOTING_THRESHOLD || '2/2';
@@ -293,6 +294,7 @@ app.get('/api/parcels/owner/:wallet', async (req, res) => {
 app.get('/api/fee-config', (req, res) => {
   res.json({
     citizenFeeSol: FEE_CITIZEN_SOL,
+    councilActionFeeSol: FEE_COUNCIL_ACTION_SOL,
     governanceExecutionFeeSol: FEE_GOVERNANCE_EXECUTION_SOL,
     adminFeeSol: FEE_GOVERNANCE_EXECUTION_SOL, // legacy alias for existing frontend
     treasuryWallet: TREASURY_WALLET,
@@ -415,7 +417,9 @@ app.post('/api/whitelist', async (req, res) => {
     const { walletAddress, ownerName, requestType, location, size, toWallet, toName, parcelId, freezeReason, paymentTxSignature, nftTransferSignature } = req.body;
     const normalizedType = requestType || 'whitelist';
 
-    if ((normalizedType === 'registration' || normalizedType === 'transfer') && !paymentTxSignature) {
+    // Payment signature is only required when a fee is configured (> 0 SOL). 
+    // If the fee is 0 (network fee only mode), submissions are accepted without a payment tx.
+    if (FEE_CITIZEN_SOL > 0 && (normalizedType === 'registration' || normalizedType === 'transfer') && !paymentTxSignature) {
       return res.status(400).json({ error: 'Payment required. Send SOL fee first and include paymentTxSignature.' });
     }
 
