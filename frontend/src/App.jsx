@@ -753,7 +753,7 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-24 md:h-28 items-center justify-between gap-8 py-2">
             <button onClick={() => setActiveTab('landing')} className="flex items-center group cursor-pointer -ml-2">
-              <RealmRegistryLogo className="h-20 md:h-28 w-auto opacity-100 scale-110 origin-left" />
+              <RealmRegistryLogo className="h-28 md:h-28 w-auto opacity-100 scale-110 origin-left" />
             </button>
             <nav className="hidden md:flex items-center gap-10 text-base lg:text-lg font-semibold text-slate-700">
               <a className="hover:text-primary transition-colors" href="#pillars">Technology</a>
@@ -773,43 +773,40 @@ function App() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-16 lg:py-24">
             <div className="grid lg:grid-cols-2 gap-16 items-center">
               <div className="space-y-8 animate-fadeInUp max-w-[560px]">
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/70 border border-[#cccccc] text-[#444] text-[13px] font-medium tracking-wide shadow-sm">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary"></span>
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-300 text-[13px] font-medium tracking-wide shadow-sm">
+                  <span className="h-2 w-2 rounded-full bg-secondary animate-glow"></span>
                   National land trust layer on Solana
                 </div>
-                <h1 className="font-display font-black text-[32px] sm:text-[40px] lg:text-[52px] leading-[1.15] text-[#1a1a2e]">
-                  Secure <span className="text-[#c0392b]">Land Ownership</span> on the <span className="text-primary">Blockchain</span>.
+                <h1 className="font-display font-black text-[32px] sm:text-[40px] lg:text-[52px] leading-[1.1] text-white">
+                  Secure <span className="gradient-text">Land Ownership</span> on the <span className="gradient-text-alt">Blockchain</span>.
                 </h1>
-                <p className="subtitle text-[15px] text-[#555] leading-[1.7] max-w-[420px]">
+                <p className="subtitle text-[16px] text-slate-400 leading-[1.7] max-w-[420px]">
                   Governed in Realms. Proven on Solana. Every land action is immutable, searchable and verifiable in the explorer.
                 </p>
-                <div className="buttons flex flex-wrap gap-3 items-center">
+                <div className="buttons flex flex-wrap gap-4 items-center mt-4">
                   <button
                     onClick={() => setActiveTab('explorer')}
-                    className="btn-primary flex items-center gap-2 rounded-lg text-[15px] font-semibold px-6 py-3.5 shadow-sm"
-                    style={{ backgroundColor: '#c0392b', color: 'white' }}
+                    className="flex items-center gap-2 rounded-lg text-[15px] font-bold px-6 py-3.5 shadow-neon hover:shadow-[0_0_30px_rgba(20,241,149,0.6)] transition-all bg-gradient-to-r from-primary to-secondary text-black"
                   >
                     Explore Public Records
                   </button>
                   <button
                     onClick={() => {
-                      // open wallet button from navbar via click, but as fallback just focus the wallet adapter
                       const el = document.querySelector('.wallet-adapter-button');
                       if (el) el.click();
                     }}
                     type="button"
-                    className="btn-secondary rounded-lg border text-[15px] font-medium px-6 py-3.5 bg-white text-[#1a1a2e] hover:bg-[#001f5c] hover:text-white transition-colors duration-200"
-                    style={{ borderColor: '#cccccc' }}
+                    className="rounded-lg border border-white/20 text-[15px] font-semibold px-6 py-3.5 bg-white/5 text-white hover:bg-white/10 transition-colors duration-200 backdrop-blur-md"
                   >
                     Connect Wallet
                   </button>
                 </div>
               </div>
 
-              {/* Visual Side Ã¢â‚¬â€œ Nepal typography tile */}
+              {/* Visual Side – Solana typography tile */}
               <div className="relative z-10 flex justify-end animate-fadeInUp animate-delay-200">
-                <div className="relative rounded-3xl overflow-hidden border border-white/20 shadow-2xl w-[360px] sm:w-[380px] lg:w-[400px] aspect-[4/5] bg-slate-900">
-                  <div className="absolute inset-0 bg-gradient-to-tr from-primary/40 to-accent-crimson/20 z-10"></div>
+                <div className="relative rounded-3xl overflow-hidden border border-primary/30 shadow-neon w-[360px] sm:w-[380px] lg:w-[400px] aspect-[4/5] bg-black">
+                  <div className="absolute inset-0 bg-gradient-to-tr from-primary/30 to-secondary/10 z-10"></div>
                   <div className="absolute inset-0 flex items-center justify-center p-4">
                     <div
                       className="w-full h-full rounded-2xl bg-center bg-cover border border-white/10"
@@ -832,34 +829,34 @@ function App() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-16 lg:py-24">
             <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
               <div className="animate-fadeInUp">
-                <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-accent-crimson mb-3">
+                <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-secondary mb-3">
                   Current challenge
                 </p>
-                <h2 className="text-[30px] sm:text-[38px] lg:text-[48px] leading-[1.15] font-black text-slate-900">
+                <h2 className="text-[30px] sm:text-[38px] lg:text-[48px] leading-[1.15] font-black text-white">
                   What is the problem with today&apos;s land registry and transfer ownership?
                 </h2>
-                <p className="mt-5 text-[16px] text-slate-600 leading-[1.8] max-w-[620px]">
+                <p className="mt-5 text-[16px] text-slate-400 leading-[1.8] max-w-[620px]">
                   Paper records, manual approvals, and disconnected offices slow down registration and ownership transfer.
                   This creates delays, fraud risk, and costly title disputes for citizens.
                 </p>
                 <div className="mt-8 grid sm:grid-cols-3 gap-3">
-                  <div className="landing-problem-chip landing-chip-1 rounded-xl border border-slate-200 p-4 text-sm font-semibold text-slate-700 shadow-sm">
+                  <div className="landing-problem-chip bg-white/5 border border-white/10 p-4 text-sm font-semibold text-white shadow-sm">
                     Delayed verification
                   </div>
-                  <div className="landing-problem-chip landing-chip-2 rounded-xl border border-slate-200 p-4 text-sm font-semibold text-slate-700 shadow-sm">
+                  <div className="landing-problem-chip bg-white/5 border border-white/10 p-4 text-sm font-semibold text-white shadow-sm">
                     Ownership conflicts
                   </div>
-                  <div className="landing-problem-chip landing-chip-3 rounded-xl border border-slate-200 p-4 text-sm font-semibold text-slate-700 shadow-sm">
+                  <div className="landing-problem-chip bg-white/5 border border-white/10 p-4 text-sm font-semibold text-white shadow-sm">
                     Fraud and tampering risk
                   </div>
                 </div>
               </div>
               <div className="animate-fadeInUp animate-delay-100">
-                <div className="landing-problem-visual rounded-3xl border border-slate-200 p-3 shadow-xl">
+                <div className="landing-problem-visual rounded-3xl border border-white/10 p-3 shadow-neon bg-black/50 backdrop-blur-md">
                   <img
                     src="/problem-land-registry.svg"
                     alt="Illustration showing delays and disputes in traditional land registry and ownership transfer"
-                    className="w-full h-auto rounded-2xl"
+                    className="w-full h-auto rounded-2xl opacity-80 mix-blend-screen"
                   />
                 </div>
               </div>
@@ -871,8 +868,8 @@ function App() {
         <section id="pillars" className="min-h-screen flex items-center">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="mb-16">
-              <h2 className="text-primary font-bold text-sm uppercase tracking-widest mb-2">The Web3 Advantage</h2>
-              <h3 className="text-4xl font-black text-slate-900">Solana-Powered Web3 Solutions</h3>
+              <h2 className="gradient-text font-bold text-sm uppercase tracking-widest mb-2">The Web3 Advantage</h2>
+              <h3 className="text-4xl font-black text-white">Solana-Powered Web3 Solutions</h3>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
@@ -881,12 +878,12 @@ function App() {
                 { icon: Landmark, title: 'Transparent Audit Logs', desc: 'Every change, transfer, and lien is recorded forever on the blockchain, creating an unalterable history.' },
                 { icon: Zap, title: 'High-Speed Processing', desc: 'Leveraging Solana’s 65k+ TPS architecture for near-instant settlement and minimal transaction fees.' },
               ].map((item, i) => (
-                <div key={i} className={`landing-pillar-card landing-pillar-tone-${i + 1} p-8 rounded-2xl border transition-all group shadow-sm border-slate-200/60 hover:shadow-xl hover:shadow-primary/10`}>
-                  <div className="landing-pillar-icon w-12 h-12 rounded-xl bg-white/70 ring-1 ring-white/80 backdrop-blur-sm flex items-center justify-center mb-6 transition-all text-primary">
+                <div key={i} className={`landing-pillar-card p-8 rounded-2xl border transition-all group shadow-sm border-white/10 hover:shadow-neon bg-white/5`}>
+                  <div className="landing-pillar-icon w-12 h-12 rounded-xl bg-white/10 ring-1 ring-white/20 backdrop-blur-md flex items-center justify-center mb-6 transition-all text-secondary">
                     <item.icon className="w-6 h-6" />
                   </div>
-                  <h4 className="text-xl font-bold mb-3">{item.title}</h4>
-                  <p className="text-slate-500 text-sm leading-relaxed">{item.desc}</p>
+                  <h4 className="text-xl font-bold mb-3 text-white">{item.title}</h4>
+                  <p className="text-slate-400 text-sm leading-relaxed">{item.desc}</p>
                 </div>
               ))}
             </div>
@@ -897,8 +894,8 @@ function App() {
         <section id="how-it-works" className="min-h-screen flex items-center">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-20">
-              <h2 className="text-3xl lg:text-4xl font-black mb-4">How RealmRegistry Works</h2>
-              <p className="text-slate-500 max-w-2xl mx-auto">Citizens submit requests, council governs in Realms, and the DAO executes on-chain actions that the backend verifies before updating the registry.</p>
+              <h2 className="text-3xl lg:text-4xl font-black mb-4 text-white">How RealmRegistry Works</h2>
+              <p className="text-slate-400 max-w-2xl mx-auto">Citizens submit requests, council governs in Realms, and the DAO executes on-chain actions that the backend verifies before updating the registry.</p>
             </div>
             <div className="relative">
               <div className="grid lg:grid-cols-4 gap-8 relative z-10">
@@ -918,10 +915,10 @@ function App() {
                       ][i]}`}
                     >
                       <item.icon className="w-8 h-8" />
-                      <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-accent-crimson text-white text-[10px] font-bold flex items-center justify-center">{item.step}</div>
+                      <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-secondary text-black text-[10px] font-bold flex items-center justify-center">{item.step}</div>
                     </div>
-                    <h5 className="font-bold text-lg mb-2">{item.title}</h5>
-                    <p className="text-sm text-slate-500">{item.desc}</p>
+                    <h5 className="font-bold text-lg mb-2 text-white">{item.title}</h5>
+                    <p className="text-sm text-slate-400">{item.desc}</p>
                   </div>
                 ))}
               </div>
@@ -930,17 +927,18 @@ function App() {
         </section>
 
         {/* Live Audit Log Preview */}
-        <section className="min-h-screen flex items-center bg-slate-900 text-white overflow-hidden">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="min-h-screen flex items-center bg-black text-white overflow-hidden relative border-t border-white/5">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(ellipse_at_top,rgba(153,69,255,0.1)_0%,transparent_50%)]"></div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div className="grid lg:grid-cols-2 gap-16 items-center">
               <div>
-                <h2 className="text-primary font-bold text-sm uppercase tracking-widest mb-2">Real-Time Transparency</h2>
+                <h2 className="gradient-text font-bold text-sm uppercase tracking-widest mb-2">Real-Time Transparency</h2>
                 <h3 className="text-4xl font-black mb-6">Immutable Audit Logs</h3>
                 <p className="text-slate-400 text-lg leading-relaxed mb-8">Experience complete visibility. Every transaction is indexed and searchable, making corruption impossible and due diligence effortless.</p>
                 <ul className="space-y-4">
                   {['Cryptographic Proof of Title', 'Zero-Downtime Global Access', 'Automated Compliance Checks'].map((text, i) => (
                     <li key={i} className="flex items-center gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-primary" />
+                      <CheckCircle2 className="w-5 h-5 text-secondary" />
                       <span>{text}</span>
                     </li>
                   ))}
@@ -958,14 +956,14 @@ function App() {
                       <span className="text-[10px] text-slate-500 uppercase font-bold">Live Solana Ledger Feed</span>
                     </div>
                     <div className="space-y-3">
-                      <div className="flex gap-4"><span className="text-primary">14:02:11</span><span className="text-accent-crimson">[MINT]</span><span className="text-slate-400">Title #NFT-882... validated</span></div>
-                      <div className="flex gap-4"><span className="text-primary">13:58:45</span><span className="text-blue-400">[TRANS]</span><span className="text-slate-400">Ownership transfer request: 0x4f...</span></div>
-                      <div className="flex gap-4"><span className="text-primary">13:45:02</span><span className="text-green-400">[VERIF]</span><span className="text-slate-400">Verification successful Asset ID 9922</span></div>
-                      <div className="flex gap-4 opacity-50"><span className="text-primary">13:33:19</span><span className="text-accent-crimson">[MINT]</span><span className="text-slate-400">Title #NFT-881... finalized</span></div>
+                      <div className="flex gap-4"><span className="text-[#9945FF]">14:02:11</span><span className="text-[#14F195]">[MINT]</span><span className="text-slate-400">Title #NFT-882... validated</span></div>
+                      <div className="flex gap-4"><span className="text-[#9945FF]">13:58:45</span><span className="text-blue-400">[TRANS]</span><span className="text-slate-400">Ownership transfer request: 0x4f...</span></div>
+                      <div className="flex gap-4"><span className="text-[#9945FF]">13:45:02</span><span className="text-[#14F195]">[VERIF]</span><span className="text-slate-400">Verification successful Asset ID 9922</span></div>
+                      <div className="flex gap-4 opacity-50"><span className="text-[#9945FF]">13:33:19</span><span className="text-[#14F195]">[MINT]</span><span className="text-slate-400">Title #NFT-881... finalized</span></div>
                     </div>
                     <div className="mt-6 pt-4 border-t border-white/5 flex justify-between items-center text-[10px]">
                       <span className="text-slate-500">Tps: 64,812 | Finality: 0.4s</span>
-                      <span className="text-primary font-bold animate-pulse">Ã¢â€”Â NETWORK SYNCED</span>
+                      <span className="text-secondary font-bold animate-pulse">● NETWORK SYNCED</span>
                     </div>
                   </div>
                 </div>
@@ -975,19 +973,19 @@ function App() {
         </section>
 
         {/* CTA Section */}
-        <section className="min-h-screen flex items-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-primary transform -skew-y-3 origin-bottom-right"></div>
+        <section className="min-h-screen flex items-center relative overflow-hidden bg-black border-t border-white/10">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(20,241,149,0.15)_0%,transparent_60%)]"></div>
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center text-white py-12">
             <h2 className="text-4xl font-black mb-6">Ready to Secure Your Future?</h2>
             <p className="text-white/80 text-lg mb-10">Join the thousands of property owners who have already modernized their assets with RealmRegistry.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={() => setActiveTab('parcels')}
-                className="bg-accent-crimson hover:bg-red-700 text-white px-8 py-4 rounded-xl font-bold transition-all shadow-xl shadow-black/20"
+                className="bg-gradient-to-r from-primary to-secondary text-black px-8 py-4 rounded-xl font-bold transition-all shadow-neon hover:scale-105"
               >
                 Start Your Registry
               </button>
-              <button onClick={() => setActiveTab('explorer')} className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-8 py-4 rounded-xl font-bold transition-all">
+              <button onClick={() => setActiveTab('explorer')} className="bg-white/5 hover:bg-white/10 text-white border border-white/20 px-8 py-4 rounded-xl font-bold transition-all backdrop-blur-md">
                 Explore Records
               </button>
             </div>
@@ -995,37 +993,37 @@ function App() {
         </section>
       </main>
 
-      <footer className="bg-[#020b23] text-slate-100 pt-14 pb-6">
+      <footer className="bg-black border-t border-white/5 text-slate-100 pt-14 pb-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
             <div>
               <h3 className="text-2xl font-black mb-3">RealmRegistry</h3>
-              <div className="h-1 w-14 bg-primary rounded-full mb-4"></div>
-              <p className="text-slate-300 leading-relaxed text-sm md:text-base max-w-md">
+              <div className="h-1 w-14 bg-gradient-to-r from-primary to-secondary rounded-full mb-4"></div>
+              <p className="text-slate-400 leading-relaxed text-sm md:text-base max-w-md">
                 RealmRegistry is a municipal land registry where authority is controlled by a Realms DAO, not by admin wallets.
               </p>
             </div>
 
             <div>
               <h3 className="text-2xl font-black mb-3">Connect With Us</h3>
-              <div className="h-1 w-14 bg-fuchsia-500 rounded-full mb-5"></div>
+              <div className="h-1 w-14 bg-primary rounded-full mb-5"></div>
               <a
                 href="https://github.com/sachinacharyaa/RealmRegistry"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-900/70 hover:bg-slate-900 transition-colors font-semibold"
+                className="inline-flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-colors font-semibold"
               >
-                <Github className="w-5 h-5" />
+                <Github className="w-5 h-5 text-secondary" />
                 RealmRegistry on GitHub
               </a>
             </div>
 
             <div>
               <h3 className="text-2xl font-black mb-3">Contact Us</h3>
-              <div className="h-1 w-14 bg-pink-500 rounded-full mb-5"></div>
+              <div className="h-1 w-14 bg-secondary rounded-full mb-5"></div>
               <a
                 href="mailto:thesachinacharya@gmail.com"
-                className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-slate-900/70 hover:bg-slate-900 text-slate-200 hover:text-white transition-colors"
+                className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-secondary hover:text-white transition-colors"
                 aria-label="Email RealmRegistry"
                 title="thesachinacharya@gmail.com"
               >
@@ -1034,9 +1032,9 @@ function App() {
             </div>
           </div>
 
-          <div className="mt-10 pt-5 border-t border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm text-slate-400">
+          <div className="mt-10 pt-5 border-t border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm text-slate-500">
             <p>Copyright &copy; 2026 RealmRegistry</p>
-            <p>{'Made with \u2764\uFE0F For Citizens'}</p>
+            <p className="flex items-center gap-1">Made on <Zap className="w-4 h-4 text-primary" /> Solana</p>
           </div>
         </div>
       </footer>
@@ -1185,14 +1183,14 @@ function App() {
       {/* Single global navbar on all non-landing pages */}
       {activeTab !== 'landing' && (
         <>
-          <header className="app-topbar sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-md">
+          <header className="app-topbar sticky top-0 z-40 border-b border-white/5 bg-black/95 backdrop-blur-md">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="relative flex items-center h-20">
+              <div className="relative flex items-center h-24">
                 <button
                   onClick={() => setActiveTab('landing')}
                   className="flex items-center group cursor-pointer shrink-0"
                 >
-                  <RealmRegistryLogo className="h-14 w-auto opacity-90" />
+                  <RealmRegistryLogo className="h-16 md:h-20 w-auto opacity-100 drop-shadow-[0_0_15px_rgba(153,69,255,0.5)]" />
                 </button>
                 <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-4">
                   <button
@@ -1212,22 +1210,22 @@ function App() {
                   {canAccessCouncilPanel && (
                     <button
                       onClick={() => { setActiveTab('government'); fetchWhitelist(); fetchStats() }}
-                      className={`flex items-center gap-2 px-5 py-2.5 text-sm md:text-base font-semibold transition-all relative ${activeTab === 'government' ? 'text-accent-crimson' : 'text-slate-400 hover:text-slate-600'}`}
+                      className={`flex items-center gap-2 px-5 py-2.5 text-sm md:text-base font-semibold transition-all relative ${activeTab === 'government' ? 'text-secondary' : 'text-slate-400 hover:text-slate-300'}`}
                     >
                       <Landmark className="w-4 h-4" /> {isDaoAuthority ? 'COUNCIL AUTHORITY' : 'COUNCIL'}
-                      {activeTab === 'government' && <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-accent-crimson rounded-t-full" />}
+                      {activeTab === 'government' && <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-secondary rounded-t-full shadow-neon" />}
                     </button>
                   )}
                 </div>
-                <div className="ml-auto flex items-center gap-3">
+                <div className="ml-auto flex items-center gap-4">
                   {connected ? (
                     <div className="flex items-center gap-3">
                       <span className="hidden sm:block text-right">
                         {walletPersonName && (
-                          <p className="text-xs md:text-sm font-semibold text-slate-700">{walletPersonName}</p>
+                          <p className="text-xs md:text-sm font-semibold text-white">{walletPersonName}</p>
                         )}
                         <p className="text-xs font-mono text-slate-400">{truncateHash(walletAddress)}</p>
-                        <span className={`inline-flex items-center gap-1 text-[11px] md:text-xs font-bold uppercase tracking-wider ${(isCouncilMember || isDaoAuthority) ? 'text-accent-crimson' : 'text-primary'}`}>
+                        <span className={`inline-flex items-center gap-1 text-[11px] md:text-xs font-bold uppercase tracking-wider ${(isCouncilMember || isDaoAuthority) ? 'text-secondary' : 'text-primary animate-glow'}`}>
                           {isDaoAuthority
                             ? <><Landmark className="w-4 h-4" /> DAO Authority</>
                             : isCouncilMember
@@ -1235,10 +1233,10 @@ function App() {
                               : <><User className="w-4 h-4" /> Citizen</>}
                         </span>
                       </span>
-                      <WalletMultiButton className="!bg-slate-50 !text-slate-800 !border !border-slate-200 !rounded-full !px-5 !py-2.5 !text-sm !font-bold hover:!bg-slate-100 !transition-all" />
+                      <WalletMultiButton className="!bg-white/5 !text-white !border !border-white/10 !rounded-xl !px-5 !py-2.5 !text-sm !font-bold hover:!bg-white/10 !transition-all" />
                     </div>
                   ) : (
-                    <WalletMultiButton className="!bg-primary !text-white !rounded-full !px-6 !py-3 !text-sm md:text-base !font-bold hover:!shadow-lg !transition-all" />
+                    <WalletMultiButton className="!bg-gradient-to-r from-primary to-secondary !text-black !rounded-xl !px-6 !py-3 !text-sm md:text-base !font-bold hover:!shadow-neon !transition-all" />
                   )}
                 </div>
               </div>
