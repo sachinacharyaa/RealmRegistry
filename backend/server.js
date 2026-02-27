@@ -65,11 +65,18 @@ const GOVERNANCE_COUNCIL_MEMBERS = process.env.GOVERNANCE_COUNCIL_MEMBERS || '2'
 const GOVERNANCE_VOTING_THRESHOLD = process.env.GOVERNANCE_VOTING_THRESHOLD || '2/2';
 const GOVERNANCE_VOTING_WINDOW_HOURS = parseInt(process.env.GOVERNANCE_VOTING_WINDOW_HOURS || '48', 10);
 
-const MONGO_URI = 'mongodb+srv://sachinacharya365official_db_user:kEX4fEHa1FNjVyWt@cluster0.k8tooiv.mongodb.net/onChain-RealmRegistry';
+const MONGO_URI = process.env.MONGO_URI;
+if (!MONGO_URI) {
+  console.error('Missing MONGO_URI environment variable. Set it to your MongoDB connection string.');
+  process.exit(1);
+}
 
 mongoose.connect(MONGO_URI)
   .then(() => console.log('MongoDB Connected'))
-  .catch(err => console.log(err));
+  .catch((err) => {
+    console.error('MongoDB connection error:', err.message || err);
+    process.exit(1);
+  });
 
 const parcelSchema = new mongoose.Schema({
   tokenId: Number,
@@ -299,6 +306,15 @@ app.get('/api/fee-config', (req, res) => {
     adminFeeSol: FEE_GOVERNANCE_EXECUTION_SOL, // legacy alias for existing frontend
     treasuryWallet: TREASURY_WALLET,
     solanaConfigured: solana.isConfigured,
+    governanceConfigured
+  });
+});
+
+// Simple healthcheck for deployment platforms and monitoring.
+app.get('/api/health', (req, res) => {
+  res.json({
+    ok: true,
+    mongoConnected: mongoose.connection.readyState === 1,
     governanceConfigured
   });
 });
