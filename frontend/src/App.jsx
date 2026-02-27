@@ -1399,8 +1399,8 @@ function App() {
                                 <span className="text-sm text-slate-500">{new Date(r.createdAt).toLocaleDateString()}</span>
                               </div>
                               {expandedRequestId === r._id && (
-                                <div className="px-4 pb-4 pt-2 border-t border-slate-100 bg-slate-50/70">
-                                  <div className="rounded-xl bg-slate-50 border border-slate-100 p-4 text-sm space-y-3">
+                                <div className="px-4 pb-4 pt-2 border-t border-slate-800 bg-slate-900/80">
+                                  <div className="rounded-xl bg-slate-900 border border-slate-700 p-4 text-sm space-y-3 text-slate-100">
                                     {r.requestType === 'registration' ? (
                                       <>
                                         <div className="grid grid-cols-2 gap-x-6 gap-y-2">
