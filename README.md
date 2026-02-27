@@ -11,6 +11,20 @@ RealmRegistry is a municipal land registry where authority is controlled by a **
 - Voting window: `24-48 hours`
 - Token economy: not required
 
+
+## If you want to try on your Localhost, use your Assigned Wallets
+
+- Wallet A (user (Citizens)): `here`
+
+- Wallet B (Government Officers-Council Members 1): `here`
+
+- Wallet C (Government Officers-Council Members 2): `here`
+
+- Wallet D (The DAO, Real Authority): `here`
+
+And Give command to coding agent, assign roles and permissions to each wallet.
+
+
 ## Core Principle
 
 No centralized admin key can directly approve or mint.
@@ -23,15 +37,6 @@ Every sensitive action must follow:
 4. Governance execution transaction is submitted.
 5. Backend verifies execution proof on-chain, then updates registry state.
 
-## Assigned Wallets
-
-- Wallet A (user (Citizens)) Sachin Acharya: `G6DKYcQnySUk1ZYYuR1HMovVscWjAtyDQb6GhqrvJYnw`
-
-- Wallet B (Government Officers-Council Members 1) Hari Prasad Shah: `sDHAt4Sfn556SXvKddXjCwAeKaMpLHEKKWcfG7hfmoz`
-
-- Wallet C (Government Officers-Council Members 2) Ram Shakya: `6jaM7rGsMgk81pogFqMAGj7K8AByW8tQTTEnmDYFQpbH`
-
-- Wallet D (The DAO, Real Authority) Gagan Sher shah: `8b29vHx8ZdAQp9vNSLSgmNxeqgPZbyqE6paPdwVvXYSB`
 
 ## Officer Workflow (Wallet B and C)
 

@@ -5,6 +5,7 @@ import { WalletModalProvider } from '@solana/wallet-adapter-react-ui'
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom'
 import { SolflareWalletAdapter } from '@solana/wallet-adapter-solflare'
 import { useMemo } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import '@solana/wallet-adapter-react-ui/styles.css'
 import './index.css'
 import { ErrorBoundary } from './ErrorBoundary.jsx'
@@ -38,6 +39,7 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ErrorBoundary>
       <WalletWrapper />
+      <Analytics />
     </ErrorBoundary>
   </StrictMode>,
 )
