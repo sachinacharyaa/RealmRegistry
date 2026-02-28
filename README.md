@@ -270,5 +270,4 @@ No silent overrides.
 Only governance execution.
 
 ---
-Made with love for Solana Community
-Tell me which version you want next.
+Made with love for Solana Community.
