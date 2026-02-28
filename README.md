@@ -1,124 +1,274 @@
-# RealmRegistry (Authority-First)
 
-RealmRegistry is a municipal land registry where authority is controlled by a **Realms DAO**, not by admin wallets.
+# 🏛 RealmRegistry 
+https://realmregistry.vercel.app/
 
-## Governance Model
+### Authority-First Municipal Land Governance on Solana
 
-- DAO name example: `Land Authority DAO`
-- Governance mode: `Council`
-- Council members: `2` government officers
-- Vote threshold: `2/2`
-- Voting window: `24-48 hours`
-- Token economy: not required
+RealmRegistry is a Web3 municipal land registry governed entirely by on-chain DAO execution.
 
+It eliminates centralized admin control and enforces institutional authority at the protocol level.
 
-## If you want to try on your Localhost, use your Assigned Wallets
+Built for the Authority-First Organizations track.
 
-- Wallet A (user (Citizens)): `wallet address here`
+---
 
-- Wallet B (Government Officers-Council Members 1): `wallet address here`
+# 🌍 The Problem
 
-- Wallet C (Government Officers-Council Members 2): `wallet address here`
+In many municipalities, land ownership systems suffer from:
 
-- Wallet D (The DAO, Real Authority): `wallet address here`
+* Centralized admin control
+* Manual approval workflows
+* Hidden overrides
+* Corruption risks
+* No transparent audit trail
 
-And Give command to coding agent, assign roles and permissions to each wallet.
+Even when digitized, most systems still rely on:
 
+> An admin wallet that can mutate state anytime.
 
-## Core Principle
+That means land ownership — one of the most critical assets in society — depends on trust in a single authority.
 
-No centralized admin key can directly approve or mint.
+That is the core problem we are solving.
 
-Every sensitive action must follow:
+---
 
-1. Citizen submits request.
-2. Council votes in Realms.
-3. Proposal passes.
-4. Governance execution transaction is submitted.
-5. Backend verifies execution proof on-chain, then updates registry state.
+# 🔐 Core Principle
 
+RealmRegistry follows one strict rule:
 
-## Officer Workflow (Wallet B and C)
+> No centralized admin keys.
+> Authority must come from governance only.
 
-Officers can:
+* No backdoor
+* No manual override
+* No hidden super-admin
 
-1. Review citizen requests.
-2. Create governance proposals in Realms.
-3. Vote on proposals in Realms.
+If governance does not execute, nothing changes.
 
-Transfer example:
+---
+
+# 🧱 Architecture Overview
+
+RealmRegistry is:
+
+* A Web3 municipal land registry
+* Powered by Solana
+* Governed by a Realms DAO
+
+DAO Name: **Nepal Land Authority DAO**
+Built using Realms governance.
+
+### Governance Configuration
+
+* Governance Mode: Council
+* Council Members: 2 government officers
+* Vote Threshold: 2 / 2
+* Voting Window: 24–48 hours
+* Token Economy: Not required
+
+This is not token speculation governance.
+
+This is institutional authority enforced on-chain.
+
+---
+
+# ⚙ Authority Architecture
+
+## ❌ Before (Disallowed Model)
+
+```
+Admin Wallet → Officer Approval → State Mutation
+```
+
+* Single key authority
+* Manual override possible
+* Hidden risk
+
+---
+
+## ✅ After (Authority-First Model)
+
+```
+Realms DAO Proposal
+        ↓
+Council Vote (2/2)
+        ↓
+Governance Execution Transaction
+        ↓
+Verified Backend State Mutation
+```
+
+State changes happen ONLY after governance execution.
+
+No execution → No mutation.
+
+---
+
+# 🎯 Authority Targets
+
+RealmRegistry enforces governance over:
+
+1. Land NFT Mint Authority
+2. Transfer Approval
+3. Parcel Freeze Authority
+4. Program Upgrade Authority
+
+All controlled by the Realms Governance PDA.
+
+Not by:
+
+* A developer wallet
+* A backend server
+* A hidden key
+
+---
+
+# 🏗 System Architecture
+
+## High-Level Flow
+
+```
+Citizen (Wallet A)
+        ↓
+Submit Land Request
+        ↓
+Council Member Creates Proposal (Wallet B)
+        ↓
+Vote Approve (Wallet B)
+        ↓
+Vote Approve (Wallet C)
+        ↓
+Threshold 2/2 Reached
+        ↓
+Governance Execution
+        ↓
+Smart Contract Executes
+        ↓
+State Updated On-Chain
+```
+
+---
+
+# 👥 Workflow Example – Land Transfer
+
+Let’s walk through a real transfer:
 
 1. Citizen submits transfer request.
-2. Only `Create Proposal` action is available first.
-3. After proposal is created, both council members get `Vote Approve`.
-4. Council votes: Officer 1 = Yes, Officer 2 = Yes.
-5. Threshold `2/2` passes and request becomes ready for DAO authority.
-6. DAO Authority wallet executes the passed proposal path.
+   Only Solana network fee required.
 
-## What This Repo Implements
+2. Council Member 1 creates governance proposal.
 
-- `frontend/`: React app for explorer, citizen portal, and council execution UI.
-- `backend/`: Express + MongoDB API.
-- Solana transaction verification in `backend/solana.js`:
-  - verifies Realms execution transaction contains configured governance accounts
-  - verifies parcel mint/transfer action transactions contain required accounts
+3. Council Member 1 votes Approve.
 
-## Required Environment (Backend)
+4. Council Member 2 votes Approve.
 
-Use `backend/.env.example` and set:
+5. Threshold 2/2 is met.
 
-- `SOLANA_RPC_URL`
-- `REALMS_REALM_PUBKEY`
-- `REALMS_GOVERNANCE_PUBKEY`
-- `REALMS_GOVERNANCE_SIGNER_PDA`
-- `REALMS_GOVERNANCE_PROGRAM_ID`
+6. Governance execution transaction runs.
 
-Optional:
+7. Land NFT transfer executes on Solana.
 
-- `FEE_CITIZEN_SOL`
-- `FEE_GOVERNANCE_EXECUTION_SOL`
-- `TREASURY_WALLET`
-- `ENABLE_DEMO_SEED`
+If governance does not execute, nothing changes.
 
-## API Notes
+---
 
-- `POST /api/whitelist`: citizen registration/transfer request submission.
-- `POST /api/freeze-requests`: create a freeze request for DAO vote/execution.
-- `POST /api/council/proposals/:id/create`: council member creates proposal step.
-- `POST /api/council/votes/:id`: council member vote step (`approved`/`rejected`).
-- `POST /api/governance/execute/:id`: DAO-only execution path (requires proposal + execution proof).
-- `POST /api/solana/build-registration-mint-tx` (alias: `/api/solana/build-mint-tx`): builds an NFT mint tx for Wallet D to sign in-app.
-- `PUT /api/whitelist/:id`: disabled intentionally (returns 410).
-- `GET /api/governance/config`: returns DAO/governance configuration for UI.
+# 🔍 On-Chain Verification Logic
 
-If `REALMS_*` is not configured, Wallet D fallback is allowed after `2/2` council approvals:
+RealmRegistry enforces:
 
-1. Wallet D clicks approve.
-2. App builds mint tx on backend and opens Wallet D for signing.
-3. Signed tx is submitted to Solana and saved as execution proof.
+* Proposal must exist on-chain
+* Proposal must belong to Nepal Land Authority DAO
+* Proposal state must be `Executed`
+* Execution must match intended instruction
 
-## Run Locally
+Only then:
 
-### Backend
-
-```bash
-cd backend
-npm install
-npm run dev
+```
+status = Approved
 ```
 
-### Frontend
+No frontend-based state changes.
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+No simulated governance.
 
-## Authority Guarantees
+---
 
-- No hardcoded admin wallet allowlist is used for approvals.
-- Direct approval endpoint is disabled.
-- Council action requires Realms execution proof.
-- Parcel mint, transfer, and freeze state updates require governance-linked transaction evidence.
-- Program upgrade authority must be set on-chain to the Realms Governance PDA.
+# 🚧 Challenge We Solved
+
+Many systems simulate governance.
+
+When clicking “Create Proposal,” they immediately change status to “Voting.”
+
+That is fake authority.
+
+We solved this by:
+
+* Requiring real wallet-signed proposal creation
+* Verifying proposal state on-chain
+* Only updating status after execution confirmation
+
+Authority is enforced at the protocol level — not the UI level.
+
+---
+
+# 🛡 Security Model
+
+RealmRegistry guarantees:
+
+* No single wallet can mutate state
+* No backend override
+* No upgrade without governance
+* No mint without proposal execution
+* No transfer without DAO approval
+
+Program upgrade authority is assigned to governance PDA.
+
+---
+
+# 🌍 Why This Matters
+
+Land ownership is foundational infrastructure.
+
+If we can make it:
+
+* Transparent
+* Tamper-resistant
+* Governance-controlled
+* Upgrade-safe
+
+We remove trust from individuals and move it to verifiable rules.
+
+This is the essence of Authority-First Organizations.
+
+---
+
+# 🚀 Future Vision
+
+Next steps:
+
+* Expand to multiple municipalities
+* On-chain zoning & bylaw enforcement
+* Time-locked cooling periods
+* Treasury-based municipal fee routing
+* Fully DAO-controlled upgrade governance
+* National-level land authority governance
+
+Long-term vision:
+
+A sovereign digital land infrastructure governed transparently on-chain.
+
+---
+
+# 🏁 Conclusion
+
+RealmRegistry is not just a Web3 registry.
+
+It is institutional authority redesigned for transparency.
+
+No admin keys.
+No silent overrides.
+Only governance execution.
+
+---
+Made with love for Solana Community
+Tell me which version you want next.
