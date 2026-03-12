@@ -103,6 +103,56 @@ State changes happen ONLY after governance execution.
 No execution → No mutation.
 
 ---
+## Set Up: Run Locally
+
+### 1. Prerequisites
+
+ Clone repo in terminal: https://github.com/sachinacharyaa/RealmRegistry.git
+
+### 2. Backend setup
+
+1. Go to the backend folder:
+
+   ```bash
+   cd backend
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+3. Start the backend API (defaults to port `5000`):
+
+   ```bash
+   npm run dev
+   ```
+
+The backend should now be available at `http://localhost:5000`.
+
+### 3. Frontend setup
+
+1. Open a new terminal and go to the frontend folder:
+
+   ```bash
+   cd frontend
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+3. Start the frontend dev server:
+
+   ```bash
+   npm run dev
+   ```
+
+By default Vite will print a local URL such as `http://localhost:5173` – open that in your browser, connect your wallet, and you can use RealmRegistry against your local backend.
+
 
 # 🎯 Authority Targets
 
